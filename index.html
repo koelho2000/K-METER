@@ -1,0 +1,3123 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Consumos Energéticos</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="h-screen w-screen font-sans bg-gray-100">
+  <!-- Cover Screen -->
+  <div id="cover-screen" class="flex flex-col items-center justify-center h-full w-full bg-gray-900 text-white p-8">
+    <h1 class="text-5xl font-bold text-blue-400 mb-4">Simulador de Consumos Energéticos</h1>
+    <p class="text-2xl text-gray-300 mb-8" id="project-name">(Nome do Projeto TBD)</p>
+    <div class="text-gray-400 space-y-2 text-center">
+      <p>Versão: 1.0.0</p>
+      <p id="today-date"></p>
+      <p class="pt-4 text-lg">by Koelho2000</p>
+    </div>
+    <button id="start-btn" class="mt-12 px-8 py-3 bg-blue-600 text-white text-lg font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition-colors duration-300">
+      Avançar →
+    </button>
+  </div>
+
+  <!-- Main Application Container -->
+  <div id="app-container" class="hidden h-full flex flex-row overflow-hidden">
+    <!-- Side Navigation -->
+    <nav class="w-60 bg-gray-900 text-gray-300 p-4 flex flex-col space-y-2 shadow-lg z-10">
+      <h2 class="text-2xl font-bold text-white mb-4 px-2">Simulador</h2>
+      <button data-page="menu1" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
+        1. Cargas Térmicas
+      </button>
+      <button data-page="menu2" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
+        2. Ficheiro Climático
+      </button>
+      <button data-page="menu3" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
+        3. Gerar Clima
+      </button>
+      <button data-page="menu4" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
+        4. Configurar Equipamentos
+      </button>
+      <button data-page="menu5" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
+        5. Simulação
+      </button>
+      <button data-page="menu6" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
+        6. Otimização
+      </button>
+      <button data-page="menu7" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
+        7. Análise de Cenários
+      </button>
+      <button data-page="menu8" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
+        8. Comparativo
+      </button>
+      <button data-page="menu9" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
+        9. Relatório
+      </button>
+      <div class="flex-grow"></div>
+      <button id="back-to-cover" class="w-full text-left px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors">
+        ← Voltar à Capa
+      </button>
+    </nav>
+    <!-- Main Content -->
+    <main class="flex-1 p-6 overflow-y-auto bg-gray-100">
+      <!-- Menu 1: Cargas Térmicas -->
+      <section id="menu1" class="menu-section hidden space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800">1. Importação de Cargas Térmicas (CSV 8760h)</h1>
+        <!-- Import Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h2 class="text-xl font-semibold mb-4">Carregar Ficheiro CSV</h2>
+          <div class="flex items-center space-x-4">
+            <input id="thermal-file" type="file" accept=".csv,.txt" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+            <div class="flex items-center space-x-2">
+              <label for="thermal-separator" class="text-sm font-medium">Separador:</label>
+              <select id="thermal-separator" class="rounded-md border-gray-300 shadow-sm">
+                <option value=",">,</option>
+                <option value=";">;</option>
+              </select>
+            </div>
+          </div>
+          <!-- Column Mapping for Thermal -->
+          <div id="thermal-columns" class="mt-6 border-t pt-6 hidden">
+            <h3 class="text-lg font-semibold mb-4">Mapear Colunas</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="thermal-cols-select">
+              <!-- Options inserted via JS -->
+            </div>
+            <button id="process-thermal" class="mt-6 px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">Processar Cargas</button>
+          </div>
+        </div>
+        <!-- Summary and Charts for Thermal -->
+        <div id="thermal-results" class="space-y-6 hidden">
+          <h2 class="text-2xl font-bold text-gray-800">Resumo das Cargas Térmicas</h2>
+          <!-- Summary Table -->
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="text-xl font-semibold mb-4">Tabela Resumo</h3>
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Variável</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pico Máx. (kW ou kg/h)</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Média Horária</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Energia Anual (kWh ou kg)</th>
+                </tr>
+              </thead>
+              <tbody id="thermal-summary-body" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+          </div>
+          <!-- Charts -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Análise Diária</h3>
+              <input type="date" id="thermal-daily-date" class="mb-4 rounded-md border-gray-300 shadow-sm" />
+              <canvas id="thermalDailyChart" class="max-h-80"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Cargas Horárias Anuais</h3>
+              <canvas id="thermalAnnualHourlyChart" class="max-h-80"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Cargas Médias Mensais</h3>
+              <canvas id="thermalAnnualMonthlyChart" class="max-h-80"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Histograma - Aquecimento</h3>
+              <canvas id="thermalAnnualHistHeatChart" class="max-h-80"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Histograma - Arrefecimento</h3>
+              <canvas id="thermalAnnualHistCoolChart" class="max-h-80"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Menu 2: Climate File Import -->
+      <section id="menu2" class="menu-section hidden space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800">2. Importação de Ficheiro Climático (CSV/EPW*)</h1>
+        <p class="text-sm text-gray-600">*Nota: A importação de EPW está simplificada para ler como um CSV. Assegure-se que o ficheiro está num formato de texto legível.</p>
+        <!-- Import Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h2 class="text-xl font-semibold mb-4">Carregar Ficheiro</h2>
+          <div class="flex items-center space-x-4">
+            <input id="climate-file" type="file" accept=".csv,.txt,.epw" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+            <div class="flex items-center space-x-2">
+              <label for="climate-separator" class="text-sm font-medium">Separador:</label>
+              <select id="climate-separator" class="rounded-md border-gray-300 shadow-sm">
+                <option value=",">,</option>
+                <option value=";">;</option>
+              </select>
+            </div>
+          </div>
+          <!-- Column Mapping for Climate -->
+          <div id="climate-columns" class="mt-6 border-t pt-6 hidden">
+            <h3 class="text-lg font-semibold mb-4">Mapear Colunas</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="climate-cols-select"></div>
+            <button id="process-climate" class="mt-6 px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">Processar Clima</button>
+          </div>
+        </div>
+        <!-- Summary and Charts for Climate -->
+        <div id="climate-results" class="space-y-6 hidden">
+          <h2 class="text-2xl font-bold text-gray-800">Resumo dos Dados Climáticos</h2>
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="text-xl font-semibold mb-4">Tabela Resumo</h3>
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Variável</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mín.</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Máx.</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Média Anual</th>
+                </tr>
+              </thead>
+              <tbody id="climate-summary-body" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Análise Diária</h3>
+              <input type="date" id="climate-daily-date" class="mb-4 rounded-md border-gray-300 shadow-sm" />
+              <canvas id="climateDailyChart" class="max-h-80"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Perfil Horário Anual</h3>
+              <canvas id="climateAnnualHourlyChart" class="max-h-80"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Médias Mensais</h3>
+              <canvas id="climateAnnualMonthlyChart" class="max-h-80"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Histograma - Temperatura Seca</h3>
+              <canvas id="climateAnnualHistTempChart" class="max-h-80"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Menu 3: Generate Climate -->
+      <section id="menu3" class="menu-section hidden space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800">3. Geração de Ficheiro Climático (8760h)</h1>
+        <p class="text-sm text-gray-600">Nota: Esta é uma simulação simplificada usando médias mensais e variações sinusoidais, não são dados TMY reais.</p>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h2 class="text-xl font-semibold mb-4">Selecionar Localização</h2>
+          <div class="flex items-center space-x-4">
+            <select id="location-select" class="block w-full md:w-1/2 rounded-md border-gray-300 shadow-sm"></select>
+            <button id="generate-climate" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">Gerar Dados</button>
+          </div>
+        </div>
+        <!-- Summary and Charts for Generated Climate -->
+        <div id="gen-climate-results" class="space-y-6 hidden">
+          <h2 class="text-2xl font-bold text-gray-800">Resumo do Clima Gerado (<span id="gen-location-name"></span>)</h2>
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xl font-semibold">Tabela Resumo</h3>
+              <button id="export-gen-climate" class="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-green-700">Exportar CSV</button>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Variável</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mín.</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Máx.</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Média Anual</th>
+                </tr>
+              </thead>
+              <tbody id="gen-climate-summary-body" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Perfil Horário Anual</h3>
+              <canvas id="genClimateAnnualHourlyChart" class="max-h-80"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Médias Mensais</h3>
+              <canvas id="genClimateAnnualMonthlyChart" class="max-h-80"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+              <h3 class="text-xl font-semibold mb-4">Histograma - Temperatura Seca</h3>
+              <canvas id="genClimateAnnualHistTempChart" class="max-h-80"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Menu 4: Equipment Configuration -->
+      <section id="menu4" class="menu-section hidden space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800">4. Configuração de Equipamentos</h1>
+        <div class="flex justify-end">
+          <button id="add-equipment" class="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">+ Adicionar Equipamento</button>
+        </div>
+        <div id="equipment-list" class="space-y-6"></div>
+      </section>
+
+      <!-- Modal para visualizar curvas de eficiência -->
+      <div id="curve-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold" id="curve-modal-title">Curva de Eficiência</h3>
+            <button id="curve-modal-close" class="text-gray-500 hover:text-gray-700">Fechar ✕</button>
+          </div>
+          <canvas id="curveChart" class="mb-4" style="max-height:400px;"></canvas>
+          <div id="curve-modal-info" class="text-sm text-gray-700 space-y-1"></div>
+        </div>
+      </div>
+
+      <!-- Menu 5: Simulation -->
+      <section id="menu5" class="menu-section hidden space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800">5. Simulação</h1>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h2 class="text-2xl font-bold text-gray-800 mb-4">Executar Simulação</h2>
+          <div class="flex items-center space-x-6 p-4 border border-gray-200 rounded-lg">
+            <div class="flex-1 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Fonte das Cargas Térmicas:</label>
+                <select id="sim-load-source" class="w-full rounded-md border-gray-300 shadow-sm disabled:bg-gray-100">
+                  <option value="thermal">Cargas Importadas (Menu 1)</option>
+                </select>
+                <p id="sim-load-warning" class="text-xs text-red-600 mt-1 hidden">Importe dados no Menu 1 para ativar.</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Fonte dos Dados Climáticos:</label>
+                <select id="sim-climate-source" class="w-full rounded-md border-gray-300 shadow-sm disabled:bg-gray-100"></select>
+                <p id="sim-climate-warning" class="text-xs text-red-600 mt-1 hidden">Importe ou gere dados no Menu 2 ou 3.</p>
+              </div>
+            </div>
+            <div class="px-6">
+              <button id="run-simulation" class="px-8 py-4 bg-green-600 text-white text-lg font-semibold rounded-lg shadow-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed">Calcular Consumos</button>
+            </div>
+          </div>
+          <div id="simulation-results" class="mt-6 hidden">
+            <h3 class="text-xl font-semibold mb-4">Resultados da Simulação</h3>
+            <!-- Tabela de consumos anuais (energia e água) -->
+            <table class="min-w-full divide-y divide-gray-200 mb-6">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Equipamento (Nome)</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo de Carga</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo de Equipamento</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pico (kW)</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Carga Térmica Anual (kWh)</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Consumo Elétrico (kWh)</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Consumo Gás Natural (kWh)</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Consumo de Água (L)</th>
+                </tr>
+              </thead>
+              <tbody id="simulation-results-body" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+            <!-- Tabela de eficiências médias para equipamentos em modo curva -->
+            <div id="efficiency-results-container" class="hidden">
+              <h4 class="text-lg font-semibold mb-2">Eficiência Média (Equipamentos com Curva)</h4>
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Equipamento</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Eficiência Média Anual</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Eficiência Média Mensal (Jan-Dez)</th>
+                  </tr>
+                </thead>
+                <tbody id="simulation-efficiency-results-body" class="bg-white divide-y divide-gray-200"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Menu 6: Otimização -->
+      <section id="menu6" class="menu-section hidden space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800">6. Otimização</h1>
+        <div class="bg-white p-6 rounded-lg shadow-md space-y-6">
+          <!-- Inputs de custos de energia e água -->
+          <div>
+            <h2 class="text-xl font-semibold mb-4">Parâmetros de Custos</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label for="opt-electric-cost" class="block text-sm font-medium text-gray-700">Custo da Eletricidade (€/kWh)</label>
+                <input id="opt-electric-cost" type="number" step="0.0001" value="0.20" class="w-full rounded-md border-gray-300" />
+              </div>
+              <div>
+                <label for="opt-gas-cost" class="block text-sm font-medium text-gray-700">Custo do Gás Natural (€/kWh)</label>
+                <input id="opt-gas-cost" type="number" step="0.0001" value="0.06" class="w-full rounded-md border-gray-300" />
+              </div>
+              <div>
+                <label for="opt-water-cost" class="block text-sm font-medium text-gray-700">Custo da Água (€/L)</label>
+                <input id="opt-water-cost" type="number" step="0.00001" value="0.002" class="w-full rounded-md border-gray-300" />
+              </div>
+            </div>
+          </div>
+          <!-- Configuração de investimento por equipamento -->
+          <div id="investment-config">
+            <h2 class="text-xl font-semibold mb-4">Parâmetros de Investimento por Equipamento</h2>
+            <div id="investment-table-container" class="overflow-auto border border-gray-200 rounded-lg">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo de Carga</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo de Equipamento</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pico Térmico (kW)</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Gama</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Instalação</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Investimento (€)</th>
+                  </tr>
+                </thead>
+                <tbody id="investment-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <button id="run-optimization" class="px-8 py-4 bg-green-600 text-white text-lg font-semibold rounded-lg shadow-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed">Calcular Custos</button>
+          </div>
+          <!-- Resultados de otimização -->
+          <div id="optimization-results" class="hidden">
+            <h2 class="text-xl font-semibold mb-4">Resumo de Custos e Emissões</h2>
+            <div class="overflow-auto border border-gray-200 rounded-lg">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo de Carga</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nome Equipamento</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo de Equipamento</th>
+                    <!-- Agrupamos consumo, custo e emissões numa única coluna para cada fonte de energia -->
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Eletricidade<br>(Consumo / Custo / CO₂)</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Gás Natural<br>(Consumo / Custo / CO₂)</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Água<br>(Consumo / Custo)</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total<br>(Custo / CO₂)</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Investimento (€)</th>
+                  </tr>
+                </thead>
+                <tbody id="optimization-results-body" class="bg-white divide-y divide-gray-200"></tbody>
+                <tfoot id="optimization-results-footer" class="bg-gray-50"></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Menu 7: Análise de Cenários -->
+      <section id="menu7" class="menu-section hidden space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800">7. Análise de Cenários</h1>
+        <div class="bg-white p-6 rounded-lg shadow-md space-y-6">
+          <p class="text-sm text-gray-700">Este gráfico apresenta todos os cenários possíveis, combinando um equipamento para cada tipo de carga configurado (aquecimento, arrefecimento, humidificação e desumidificação). Cada linha representa uma métrica: investimento, emissões de CO₂, custo, consumo de energia e consumo de água. Seleccione um cenário na lista para ver os detalhes numéricos.</p>
+
+          <!-- Configuração do Cenário Base (Cenário 0) -->
+          <div id="base-scenario-config" class="p-4 border border-gray-200 rounded-lg hidden">
+            <h3 class="text-lg font-semibold mb-2">Cenário Base (Manual)</h3>
+            <p class="text-sm text-gray-600 mb-2">Seleccione um equipamento para cada tipo de carga para definir o cenário base.</p>
+            <div id="base-scenario-selects" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            <button id="update-base-scenario" class="mt-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">Atualizar Cenário Base</button>
+            <div id="base-scenario-summary" class="mt-2 text-sm text-gray-700"></div>
+          </div>
+          <canvas id="scenarioChart" class="max-h-80"></canvas>
+          <div class="mt-4">
+            <label for="scenario-select" class="block text-sm font-medium text-gray-700">Seleccionar cenário:</label>
+            <select id="scenario-select" class="mt-1 w-full md:w-1/3 rounded-md border-gray-300"></select>
+          </div>
+          <!-- Tabela que lista todos os cenários e os equipamentos seleccionados por tipo de carga -->
+          <div id="scenario-table-container" class="overflow-auto border border-gray-200 rounded-lg mt-6 hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cenário</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Aquecimento</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Arrefecimento</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Humidificação</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Desumidificação</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Custo (€/ano)</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ton CO₂</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Investimento (€)</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ROI (%)</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">VAL</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">TIR (%)</th>
+                </tr>
+              </thead>
+              <tbody id="scenario-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+          </div>
+          <div id="scenario-details" class="mt-4"></div>
+        </div>
+      </section>
+
+      <!-- Menu 8: Comparativo de Cenários -->
+      <section id="menu8" class="menu-section hidden space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800">8. Comparativo de Cenários</h1>
+        <div class="bg-white p-6 rounded-lg shadow-md space-y-6">
+          <p class="text-sm text-gray-700">Seleccione um cenário base e um cenário optimizado para comparar os custos, emissões, consumos e investimentos. O cenário base pode ser o cenário 0 (definido manualmente na análise de cenários) ou qualquer outro cenário gerado.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="compare-base" class="block text-sm font-medium text-gray-700">Cenário Base:</label>
+              <select id="compare-base" class="mt-1 w-full rounded-md border-gray-300"></select>
+            </div>
+            <div>
+              <label for="compare-opt" class="block text-sm font-medium text-gray-700">Cenário Optimizado:</label>
+              <select id="compare-opt" class="mt-1 w-full rounded-md border-gray-300"></select>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <button id="run-comparison" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">Comparar</button>
+          </div>
+          <div id="comparison-results" class="hidden space-y-4">
+            <h2 class="text-xl font-semibold">Resultados Comparativos</h2>
+            <div class="overflow-auto border border-gray-200 rounded-lg">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Métrica</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Base</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Optimizado</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Diferença</th>
+                  </tr>
+                </thead>
+                <tbody id="comparison-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+              </table>
+            </div>
+            <canvas id="comparisonChart" class="max-h-64"></canvas>
+            <div id="comparison-equipments" class="mt-4 text-sm text-gray-700"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Menu 9: Relatório -->
+      <section id="menu9" class="menu-section hidden space-y-6 print:bg-white print:text-black">
+        <!-- Header with title and generate button -->
+        <div class="flex justify-between items-center">
+          <h1 class="text-3xl font-bold text-gray-800">9. Relatório</h1>
+          <div class="flex space-x-2">
+            <button id="generate-report" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Gerar Relatório</button>
+            <button id="print-report" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700" disabled>Imprimir PDF</button>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md space-y-6">
+          <div id="report-content" class="space-y-8">
+            <!-- Conteúdo do relatório será gerado dinamicamente -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    // Utilities
+    function parseCSV(text, separator) {
+      const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+      const data = lines.map(line => {
+        // Simple CSV split ignoring quotes
+        const values = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            inQuotes = !inQuotes;
+          } else if (ch === separator && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+          } else {
+            current += ch;
+          }
+        }
+        values.push(current.trim());
+        return values;
+      });
+      return data;
+    }
+
+    function calculateSummary(data, sumIsEnergy = true) {
+      if (!data || data.length === 0) return { min: 0, max: 0, avg: 0, sum: 0 };
+      let min = data[0];
+      let max = data[0];
+      let sum = 0;
+      for (const val of data) {
+        if (val < min) min = val;
+        if (val > max) max = val;
+        sum += val;
+      }
+      const avg = sum / data.length;
+      return { min, max, avg, sum: sumIsEnergy ? sum : avg };
+    }
+
+    function calculateMonthlyAverage(data) {
+      const monthly = new Array(12).fill(0);
+      const hoursInMonth = [744,672,744,720,744,720,744,744,720,744,720,744];
+      let hour = 0;
+      for (let m = 0; m < 12; m++) {
+        let sum = 0;
+        for (let h = 0; h < hoursInMonth[m]; h++) {
+          if (hour < data.length) {
+            sum += data[hour];
+            hour++;
+          }
+        }
+        monthly[m] = sum / hoursInMonth[m];
+      }
+      return monthly;
+    }
+
+    function calculateHistogram(data, bins = 20) {
+      const dataFilt = data.filter(d => d > 0.01);
+      if (dataFilt.length === 0) return { labels: [], values: [] };
+      const min = Math.min(...dataFilt);
+      const max = Math.max(...dataFilt);
+      const binSize = (max - min) / bins;
+      const labels = [];
+      const values = new Array(bins).fill(0);
+      for (let i = 0; i < bins; i++) {
+        const binStart = min + i * binSize;
+        const binEnd = binStart + binSize;
+        labels.push(`${binStart.toFixed(1)}-${binEnd.toFixed(1)}`);
+      }
+      for (const val of dataFilt) {
+        let binIndex = Math.floor((val - min) / binSize);
+        if (binIndex === bins) binIndex--;
+        if (binIndex >= 0 && binIndex < bins) values[binIndex]++;
+      }
+      return { labels, values };
+    }
+
+    function getDayOfYear(dateStr) {
+      const date = new Date(dateStr);
+      const start = new Date(date.getFullYear(), 0, 0);
+      const diff = (date - start) + ((start.getTimezoneOffset() - date.getTimezoneOffset()) * 60000);
+      const oneDay = 1000 * 60 * 60 * 24;
+      return Math.floor(diff / oneDay);
+    }
+
+    // Data State
+    let rawThermal = null;
+    let rawClimate = null;
+    let thermalCols = { heat: 0, cool: 1, humid: 2, dehumid: 3 };
+    let climateCols = { temp: 0, hum: 1 };
+    let thermalLoads = null;
+    let climateData = null;
+    let generatedClimateData = null;
+    let equipmentList = [];
+    let chartInstances = {};
+
+    // Optimization data state
+    let optimizationData = {};
+    let lastSimulationResults = null;
+
+    // Climate generation parameters
+    const climateGenerationParams = {
+      'Lisboa': { country: 'PT', t_avg: [11.5,12.3,14.2,15.9,18.0,21.2,23.5,23.8,22.1,18.8,15.0,12.4], t_amp: [6,6,7,7,7,8,9,9,8,7,6,6] },
+      'Porto': { country: 'PT', t_avg: [9.5,10.3,12.0,13.5,15.7,18.8,20.8,20.9,19.5,16.3,12.8,10.4], t_amp: [5,5,6,6,6,7,8,8,7,6,5,5] },
+      'Faro': { country: 'PT', t_avg: [12.0,12.7,14.4,16.0,18.2,21.5,24.1,24.3,22.6,19.3,15.5,12.9], t_amp: [7,7,8,8,8,9,10,10,9,8,7,7] },
+      'Aveiro': { country: 'PT', t_avg: [10.3,11.0,12.6,13.9,15.9,18.8,20.6,20.8,19.5,16.6,13.4,11.1], t_amp: [6,6,6,7,7,7,8,8,7,7,6,6] },
+      'Beja': { country: 'PT', t_avg: [10.3,11.3,13.6,15.4,18.1,22.0,24.8,24.9,22.9,19.1,14.4,11.1], t_amp: [8,8,9,10,11,12,14,14,12,10,9,8] },
+      'Braga': { country: 'PT', t_avg: [9.0,10.0,11.9,13.5,16.0,19.5,21.6,21.7,20.0,16.2,12.4,9.8], t_amp: [7,7,8,8,9,10,11,11,10,8,7,7] },
+      'Bragança': { country: 'PT', t_avg: [4.2,5.5,8.3,10.3,13.9,18.4,21.2,21.0,17.9,13.1,8.2,5.3], t_amp: [7,8,9,10,11,12,14,14,12,10,8,7] },
+      'Castelo Branco': { country: 'PT', t_avg: [8.0,9.3,11.8,13.7,17.1,21.5,24.6,24.6,21.7,17.0,12.1,8.9], t_amp: [8,9,10,11,12,14,16,16,14,11,9,8] },
+      'Coimbra': { country: 'PT', t_avg: [10.0,11.0,13.1,14.6,16.9,20.2,22.4,22.7,21.1,17.6,13.6,10.8], t_amp: [7,7,8,8,9,10,11,11,10,9,8,7] },
+      'Évora': { country: 'PT', t_avg: [10.2,11.2,13.5,15.2,17.9,21.9,24.8,24.9,22.9,19.0,14.3,11.1], t_amp: [8,8,9,10,11,13,15,15,13,10,9,8] },
+      'Guarda': { country: 'PT', t_avg: [4.3,5.3,7.6,9.1,12.3,16.6,19.3,19.3,16.6,12.2,7.9,5.3], t_amp: [6,7,8,9,10,12,14,14,12,9,7,6] },
+      'Leiria': { country: 'PT', t_avg: [11.0,11.7,13.5,14.8,16.8,19.8,21.8,22.2,20.9,17.8,14.3,11.7], t_amp: [7,7,7,8,8,8,9,9,9,8,7,7] },
+      'Portalegre': { country: 'PT', t_avg: [8.8,9.7,11.8,13.3,16.2,20.2,22.9,23.0,20.7,16.7,12.4,9.6], t_amp: [7,7,8,9,10,12,14,14,12,9,8,7] },
+      'Santarém': { country: 'PT', t_avg: [11.0,12.0,14.1,15.7,18.1,21.6,24.0,24.3,22.6,19.1,14.8,11.8], t_amp: [7,8,9,9,10,11,12,12,11,9,8,7] },
+      'Setúbal': { country: 'PT', t_avg: [11.6,12.4,14.3,15.8,18.0,21.3,23.6,23.9,22.3,19.0,15.1,12.5], t_amp: [7,7,8,8,8,9,10,10,9,8,7,7] },
+      'Viana do Castelo': { country: 'PT', t_avg: [9.7,10.4,12.1,13.5,15.8,18.8,20.8,20.9,19.5,16.4,13.0,10.6], t_amp: [6,6,7,7,7,8,8,8,8,7,6,6] },
+      'Vila Real': { country: 'PT', t_avg: [6.9,8.2,10.6,12.4,15.5,19.8,22.4,22.3,19.6,15.0,10.5,7.8], t_amp: [7,8,9,10,11,13,14,14,12,10,8,7] },
+      'Viseu': { country: 'PT', t_avg: [6.8,8.1,10.4,12.1,15.0,19.1,21.6,21.6,19.0,14.5,10.3,7.8], t_amp: [7,8,9,9,10,12,14,14,12,10,8,7] },
+      'Londres': { country: 'World', t_avg: [4.9,5.0,7.2,9.4,12.8,15.8,17.9,17.6,14.9,11.3,7.7,5.5], t_amp: [4,4,5,6,7,7,8,8,7,6,5,4] },
+      'Berlim': { country: 'World', t_avg: [0.5,1.4,5.0,9.6,14.5,17.7,19.7,19.2,15.0,10.1,5.1,1.9], t_amp: [5,6,7,8,9,9,9,9,8,7,5,5] },
+      'Moscovo': { country: 'World', t_avg: [-6.5,-6.7,-1.0,6.7,13.2,17.0,19.2,17.0,11.3,5.6,-1.2,-5.2], t_amp: [6,7,8,9,10,10,10,10,9,7,6,6] },
+      'Nova Iorque': { country: 'World', t_avg: [0.3,1.8,6.3,12.3,17.6,22.7,25.7,24.8,20.7,14.4,8.6,2.9], t_amp: [6,7,8,8,9,9,8,8,8,7,7,6] },
+      'Ottawa': { country: 'World', t_avg: [-10.3,-8.4,-2.3,6.3,13.3,18.3,20.9,19.5,14.6,7.6,0.6,-7.0], t_amp: [8,9,10,11,11,11,11,11,11,10,9,8] },
+      'Cidade do México': { country: 'World', t_avg: [14.7,16.0,18.0,18.9,19.0,18.5,17.6,17.7,17.5,16.8,15.8,15.0], t_amp: [10,11,11,11,10,9,9,9,9,9,10,10] },
+      'São Paulo': { country: 'World', t_avg: [22.2,22.4,21.7,20.3,18.3,17.2,16.8,17.8,18.9,19.9,20.9,21.5], t_amp: [7,7,7,7,6,6,7,7,7,7,7,7] },
+      'Buenos Aires': { country: 'World', t_avg: [24.6,23.4,21.5,17.7,14.4,11.5,11.1,13.0,14.9,17.9,20.7,23.2], t_amp: [8,8,8,7,7,7,7,8,8,8,8,8] },
+      'Cairo': { country: 'World', t_avg: [13.6,14.9,17.7,21.5,25.5,27.8,28.4,28.2,26.0,23.3,18.9,15.0], t_amp: [8,9,10,11,12,12,11,11,11,10,9,8] },
+      'Nairobi': { country: 'World', t_avg: [20.4,21.2,21.6,20.7,19.5,18.2,17.4,17.7,19.0,20.2,20.0,19.8], t_amp: [10,10,10,9,9,8,8,8,9,10,10,10] },
+      'Cidade do Cabo': { country: 'World', t_avg: [21.4,21.4,20.2,17.8,15.5,13.4,12.5,13.1,14.3,16.2,18.3,20.1], t_amp: [7,7,7,7,6,6,6,6,6,7,7,7] },
+      'Tóquio': { country: 'World', t_avg: [5.2,5.7,8.7,13.9,18.2,21.4,25.0,26.4,22.8,17.5,12.1,7.6], t_amp: [6,6,7,8,8,7,7,7,7,8,7,6] },
+      'Pequim': { country: 'World', t_avg: [-2.5,0.7,7.5,15.6,21.6,25.7,27.2,25.9,21.1,14.0,5.5,-0.6], t_amp: [9,10,11,11,11,11,10,10,11,10,9,9] },
+      'Nova Deli': { country: 'World', t_avg: [14.2,17.1,22.5,28.8,32.6,33.4,30.9,29.8,29.0,25.7,20.3,15.6], t_amp: [10,11,12,13,12,11,9,8,9,11,11,10] },
+      'Sydney': { country: 'World', t_avg: [23.0,23.0,21.7,19.4,16.5,14.1,13.3,14.6,16.8,18.9,20.6,22.1], t_amp: [7,7,7,7,7,7,7,8,8,8,8,7] },
+    };
+
+    // Set current date on cover
+    document.getElementById('today-date').textContent = `Data: ${new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+
+    // Navigation Logic
+    const coverScreen = document.getElementById('cover-screen');
+    const appContainer = document.getElementById('app-container');
+    document.getElementById('start-btn').addEventListener('click', () => {
+      coverScreen.classList.add('hidden');
+      appContainer.classList.remove('hidden');
+      showMenu('menu1');
+    });
+    document.getElementById('back-to-cover').addEventListener('click', () => {
+      appContainer.classList.add('hidden');
+      coverScreen.classList.remove('hidden');
+    });
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const page = btn.getAttribute('data-page');
+        showMenu(page);
+      });
+    });
+
+    function showMenu(id) {
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-700','text-white');
+        if (btn.getAttribute('data-page') === id) {
+          btn.classList.add('bg-blue-700','text-white');
+        }
+      });
+      document.querySelectorAll('.menu-section').forEach(sec => sec.classList.add('hidden'));
+      const section = document.getElementById(id);
+      if (section) section.classList.remove('hidden');
+      // destroy charts when switching to avoid memory leaks
+      Object.keys(chartInstances).forEach(key => {
+        chartInstances[key].destroy();
+        delete chartInstances[key];
+      });
+      // Atualizar tabela de investimento ao entrar na Otimização
+      if (id === 'menu6') {
+        updateInvestmentTable();
+      }
+      // Atualizar análise de cenários ao entrar na Análise de Cenários
+      if (id === 'menu7') {
+        updateScenarioAnalysis();
+      }
+      // Atualizar opções de comparativo ao entrar na Comparativo
+      if (id === 'menu8') {
+        updateComparativoOptions();
+      }
+    }
+
+    // Thermal File Handling
+    document.getElementById('thermal-file').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const separator = document.getElementById('thermal-separator').value;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        const text = ev.target.result;
+        const rows = parseCSV(text, separator);
+        const headers = rows[0];
+        const data = rows.slice(1);
+        rawThermal = { headers, data };
+        // Show mapping
+        const container = document.getElementById('thermal-cols-select');
+        container.innerHTML = '';
+        // Create selects for each variable
+        const vars = [
+          { key: 'heat', label: 'Aquecimento (kW)', defaultIndex: 0 },
+          { key: 'cool', label: 'Arrefecimento (kW)', defaultIndex: 1 },
+          { key: 'humid', label: 'Humidificação (kg/h)', defaultIndex: 2 },
+          { key: 'dehumid', label: 'Desumidificação (kg/h)', defaultIndex: 3 },
+        ];
+        vars.forEach(v => {
+          const div = document.createElement('div');
+          const label = document.createElement('label');
+          label.textContent = v.label;
+          label.className = 'block text-sm font-medium text-gray-700';
+          const select = document.createElement('select');
+          select.className = 'mt-1 block w-full rounded-md border-gray-300 shadow-sm';
+          headers.forEach((h, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.textContent = h;
+            if (idx === v.defaultIndex) opt.selected = true;
+            select.appendChild(opt);
+          });
+          select.addEventListener('change', () => {
+            thermalCols[v.key] = +select.value;
+          });
+          div.appendChild(label);
+          div.appendChild(select);
+          container.appendChild(div);
+          // Set default
+          thermalCols[v.key] = v.defaultIndex;
+        });
+        document.getElementById('thermal-columns').classList.remove('hidden');
+      };
+      reader.readAsText(file);
+    });
+
+    // Process Thermal Data
+    document.getElementById('process-thermal').addEventListener('click', () => {
+      if (!rawThermal || rawThermal.data.length < 8760) {
+        alert('Dados insuficientes. São necessárias 8760 horas.');
+        return;
+      }
+      const data = { heating: [], cooling: [], humid: [], dehumid: [] };
+      for (let i = 0; i < 8760; i++) {
+        const row = rawThermal.data[i];
+        data.heating.push(parseFloat(row[thermalCols.heat]) || 0);
+        data.cooling.push(parseFloat(row[thermalCols.cool]) || 0);
+        data.humid.push(parseFloat(row[thermalCols.humid]) || 0);
+        data.dehumid.push(parseFloat(row[thermalCols.dehumid]) || 0);
+      }
+      const summary = {
+        'Aquecimento (kW)': calculateSummary(data.heating),
+        'Arrefecimento (kW)': calculateSummary(data.cooling),
+        'Humidificação (kg/h)': calculateSummary(data.humid),
+        'Desumidificação (kg/h)': calculateSummary(data.dehumid),
+      };
+      thermalLoads = { data, summary };
+      // Populate summary table
+      const tbody = document.getElementById('thermal-summary-body');
+      tbody.innerHTML = '';
+      Object.keys(summary).forEach(key => {
+        const s = summary[key];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${key}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${s.max.toFixed(2)}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${s.avg.toFixed(2)}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${s.sum.toFixed(0)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('thermal-results').classList.remove('hidden');
+      // Set default date for daily analysis
+      const todayStr = new Date().toISOString().split('T')[0];
+      document.getElementById('thermal-daily-date').value = todayStr;
+      // Render charts
+      renderThermalCharts();
+      // Update simulation availability
+      updateSimulationInputs();
+    });
+
+    function renderThermalCharts() {
+      if (!thermalLoads) return;
+      // Destroy existing charts
+      Object.keys(chartInstances).forEach(key => {
+        if (key.startsWith('thermal')) {
+          chartInstances[key].destroy();
+          delete chartInstances[key];
+        }
+      });
+      const hours = Array.from({ length: 8760 }, (_, i) => i + 1);
+      const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      const data = thermalLoads.data;
+      // Annual hourly line chart
+      const ctx1 = document.getElementById('thermalAnnualHourlyChart').getContext('2d');
+      chartInstances.thermalAnnualHourlyChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: hours,
+          datasets: [
+            { label: 'Aquecimento (kW)', data: data.heating, borderColor: 'rgba(239,68,68,0.7)', fill: false, borderWidth: 1, pointRadius: 0 },
+            { label: 'Arrefecimento (kW)', data: data.cooling, borderColor: 'rgba(59,130,246,0.7)', fill: false, borderWidth: 1, pointRadius: 0 },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Horas' } }, y: { title: { display: true, text: 'Potência (kW)' } } } }
+      });
+      // Monthly average bar chart
+      const ctx2 = document.getElementById('thermalAnnualMonthlyChart').getContext('2d');
+      chartInstances.thermalAnnualMonthlyChart = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            { label: 'Aquecimento Médio (kW)', data: calculateMonthlyAverage(data.heating), backgroundColor: 'rgba(239,68,68,0.7)' },
+            { label: 'Arrefecimento Médio (kW)', data: calculateMonthlyAverage(data.cooling), backgroundColor: 'rgba(59,130,246,0.7)' },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Mês' } }, y: { title: { display: true, text: 'Potência Média (kW)' }, beginAtZero: true } } }
+      });
+      // Histogram - heating
+      const histHeat = calculateHistogram(data.heating);
+      const ctx3 = document.getElementById('thermalAnnualHistHeatChart').getContext('2d');
+      chartInstances.thermalAnnualHistHeatChart = new Chart(ctx3, {
+        type: 'bar',
+        data: { labels: histHeat.labels, datasets: [{ label: 'Nº de Horas', data: histHeat.values, backgroundColor: 'rgba(239,68,68,0.7)' }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Potência (kW)' } }, y: { title: { display: true, text: 'Nº de Horas' }, beginAtZero: true } } }
+      });
+      // Histogram - cooling
+      const histCool = calculateHistogram(data.cooling);
+      const ctx4 = document.getElementById('thermalAnnualHistCoolChart').getContext('2d');
+      chartInstances.thermalAnnualHistCoolChart = new Chart(ctx4, {
+        type: 'bar',
+        data: { labels: histCool.labels, datasets: [{ label: 'Nº de Horas', data: histCool.values, backgroundColor: 'rgba(59,130,246,0.7)' }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Potência (kW)' } }, y: { title: { display: true, text: 'Nº de Horas' }, beginAtZero: true } } }
+      });
+      // Daily chart initial render
+      renderThermalDailyChart(document.getElementById('thermal-daily-date').value);
+    }
+
+    document.getElementById('thermal-daily-date').addEventListener('input', e => {
+      const dateStr = e.target.value;
+      renderThermalDailyChart(dateStr);
+    });
+
+    // Event listener para botão de comparativo
+    const compareBtn = document.getElementById('run-comparison');
+    if (compareBtn) {
+      compareBtn.addEventListener('click', () => {
+        runComparison();
+      });
+    }
+
+    // Botões de geração e impressão do relatório
+    const genReportBtn = document.getElementById('generate-report');
+    const printReportBtn = document.getElementById('print-report');
+    if (genReportBtn) {
+      genReportBtn.addEventListener('click', () => {
+        generateReport();
+        // Habilitar botão de impressão após gerar o relatório
+        if (printReportBtn) {
+          printReportBtn.disabled = false;
+        }
+      });
+    }
+    if (printReportBtn) {
+      printReportBtn.addEventListener('click', () => {
+        // Imprimir a página para PDF
+        window.print();
+      });
+    }
+
+    /**
+     * Gera o relatório completo preenchendo todas as secções com os dados disponíveis.
+     * Produz tabelas e gráficos e insere-os na secção de conteúdo do relatório.
+     */
+    function generateReport() {
+      const container = document.getElementById('report-content');
+      if (!container) return;
+      container.innerHTML = '';
+      // Helper para criar secção
+      function section(title, html) {
+        const div = document.createElement('div');
+        div.className = 'report-section';
+        const h = document.createElement('h2');
+        h.className = 'text-2xl font-semibold mb-2';
+        h.textContent = title;
+        div.appendChild(h);
+        if (typeof html === 'string') {
+          const p = document.createElement('div');
+          p.innerHTML = html;
+          div.appendChild(p);
+        } else if (html instanceof Node) {
+          div.appendChild(html);
+        }
+        container.appendChild(div);
+      }
+      // Format date
+      const dateStr = new Date().toLocaleDateString('pt-PT');
+      // Capa
+      section('Capa', `<p class="text-lg">Relatório de Consumos Energéticos</p><p>Data: ${dateStr}</p><p>Autor: Koelho2000</p>`);
+      // Página em branco
+      section('Página em branco', '<p style="min-height:200px;"></p>');
+      // Descrição da aplicação, metodologia e criador
+      section('Descrição da Aplicação, Metodologia e Criador', `
+        <p>Esta aplicação web permite importar cargas térmicas horárias, dados climáticos e configurar equipamentos de AVAC para simular consumos energéticos. As metodologias incluem cálculo de energia consumida com base em curvas de eficiência, optimização de custos e emissões, e análise de cenários combinando diferentes equipamentos para aquecimento, arrefecimento, humidificação e desumidificação.</p>
+        <p>A criação e desenvolvimento são da responsabilidade de Koelho2000, engenheiro mecânico especializado em projectos AVAC e auditorias energéticas.</p>
+      `);
+      // Índice
+      section('Índice', `<p>1. Introdução<br>2. Dados das Cargas<br>3. Dados Climáticos<br>4. Equipamentos Adicionados<br>5. Investimentos<br>6. Cenário Base<br>7. Cenários Optimizados<br>8. Comparativo e Análise Financeira<br>9. Conclusão</p>`);
+      // Introdução
+      section('Introdução', `
+        <p>O presente relatório apresenta uma análise detalhada dos consumos energéticos de um edifício, considerando diferentes equipamentos e condições climáticas. A simulação baseia‑se em cargas térmicas horárias e dados climáticos anuais, permitindo avaliar o desempenho de várias soluções de climatização e os respectivos custos e emissões.</p>
+      `);
+      // Dados das Cargas
+      if (thermalLoads && thermalLoads.summary) {
+        // Tabela resumo de cargas
+        const tbl = document.createElement('table');
+        tbl.className = 'min-w-full divide-y divide-gray-200 text-sm';
+        tbl.innerHTML = `
+          <thead class="bg-gray-50"><tr>
+            <th class="px-4 py-2 text-left">Tipo de Carga</th>
+            <th class="px-4 py-2 text-left">Máximo (kW)</th>
+            <th class="px-4 py-2 text-left">Média (kW)</th>
+            <th class="px-4 py-2 text-left">Total (kWh)</th>
+          </tr></thead><tbody></tbody>`;
+        const tbody = tbl.querySelector('tbody');
+        Object.keys(thermalLoads.summary).forEach(key => {
+          const s = thermalLoads.summary[key];
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="px-4 py-2">${key}</td><td class="px-4 py-2">${s.max.toFixed(2)}</td><td class="px-4 py-2">${s.avg.toFixed(2)}</td><td class="px-4 py-2">${s.sum.toFixed(0)}</td>`;
+          tbody.appendChild(tr);
+        });
+        // Conteúdo de dados de cargas
+        const cargaDiv = document.createElement('div');
+        cargaDiv.appendChild(tbl);
+        // Se houver dados de cargas, adicionar gráficos de análise
+        if (thermalLoads.data) {
+          const data = thermalLoads.data;
+          const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+          // 1) Gráfico de médias mensais por tipo de carga
+          const loadTypes = ['heating','cooling','humidification','dehumidification'];
+          const monthlyData = {};
+          loadTypes.forEach(type => {
+            const arr = data[type];
+            if (arr && arr.length === 8760) {
+              monthlyData[type] = calculateMonthlyAverage(arr);
+            }
+          });
+          const datasetsMonthly = [];
+          const colorsMonthly = {
+            heating: 'rgba(239,68,68,0.6)',
+            cooling: 'rgba(59,130,246,0.6)',
+            humidification: 'rgba(34,197,94,0.6)',
+            dehumidification: 'rgba(234,179,8,0.6)'
+          };
+          Object.keys(monthlyData).forEach(type => {
+            datasetsMonthly.push({ label: type, data: monthlyData[type], backgroundColor: colorsMonthly[type] });
+          });
+          if (datasetsMonthly.length > 0) {
+            const canvasMonthly = document.createElement('canvas');
+            canvasMonthly.style.maxHeight = '300px';
+            cargaDiv.appendChild(document.createElement('h3')).textContent = 'Médias Mensais das Cargas';
+            cargaDiv.appendChild(canvasMonthly);
+            const ctxMonthly = canvasMonthly.getContext('2d');
+            new Chart(ctxMonthly, {
+              type: 'bar',
+              data: { labels: months, datasets: datasetsMonthly },
+              options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Potência Média Mensal (kW)' } } } }
+            });
+          }
+          // 2) Gráfico de perfil horário anual (aquecimento e arrefecimento)
+          if (data.heating && data.heating.length === 8760 && data.cooling && data.cooling.length === 8760) {
+            const hours = Array.from({ length: 8760 }, (_, i) => i + 1);
+            const canvasHourly = document.createElement('canvas');
+            canvasHourly.style.maxHeight = '300px';
+            cargaDiv.appendChild(document.createElement('h3')).textContent = 'Perfil Horário Anual (Aquecimento/Arrefecimento)';
+            cargaDiv.appendChild(canvasHourly);
+            const ctxHourly = canvasHourly.getContext('2d');
+            new Chart(ctxHourly, {
+              type: 'line',
+              data: {
+                labels: hours,
+                datasets: [
+                  { label: 'Aquecimento (kW)', data: data.heating, borderColor: 'rgba(239,68,68,0.7)', fill: false, borderWidth: 1, pointRadius: 0 },
+                  { label: 'Arrefecimento (kW)', data: data.cooling, borderColor: 'rgba(59,130,246,0.7)', fill: false, borderWidth: 1, pointRadius: 0 }
+                ]
+              },
+              options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { title: { display: true, text: 'Horas' } }, y: { title: { display: true, text: 'Potência (kW)' } } } }
+            });
+          }
+          // 3) Histogramas de aquecimento e arrefecimento
+          if (typeof calculateHistogram === 'function') {
+            // Aquecimento
+            const histHeat = calculateHistogram(data.heating);
+            if (histHeat && histHeat.labels && histHeat.labels.length > 0) {
+              const canvasHistHeat = document.createElement('canvas');
+              canvasHistHeat.style.maxHeight = '300px';
+              cargaDiv.appendChild(document.createElement('h3')).textContent = 'Histograma das Cargas de Aquecimento';
+              cargaDiv.appendChild(canvasHistHeat);
+              const ctxHistHeat = canvasHistHeat.getContext('2d');
+              new Chart(ctxHistHeat, {
+                type: 'bar',
+                data: { labels: histHeat.labels, datasets: [{ label: 'Número de Horas', data: histHeat.values, backgroundColor: 'rgba(239,68,68,0.6)' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: 'Potência (kW)' } }, y: { title: { display: true, text: 'Número de Horas' }, beginAtZero: true } } }
+              });
+            }
+            // Arrefecimento
+            const histCool = calculateHistogram(data.cooling);
+            if (histCool && histCool.labels && histCool.labels.length > 0) {
+              const canvasHistCool = document.createElement('canvas');
+              canvasHistCool.style.maxHeight = '300px';
+              cargaDiv.appendChild(document.createElement('h3')).textContent = 'Histograma das Cargas de Arrefecimento';
+              cargaDiv.appendChild(canvasHistCool);
+              const ctxHistCool = canvasHistCool.getContext('2d');
+              new Chart(ctxHistCool, {
+                type: 'bar',
+                data: { labels: histCool.labels, datasets: [{ label: 'Número de Horas', data: histCool.values, backgroundColor: 'rgba(59,130,246,0.6)' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: 'Potência (kW)' } }, y: { title: { display: true, text: 'Número de Horas' }, beginAtZero: true } } }
+              });
+            }
+          }
+        }
+        section('Dados das Cargas', cargaDiv);
+      } else {
+        section('Dados das Cargas', '<p>Nenhum dado de carga foi importado.</p>');
+      }
+      // Dados climáticos
+      let climate = null;
+      if (climateData && climateData.data) climate = climateData.data;
+      else if (generatedClimateData && generatedClimateData.data) climate = generatedClimateData.data;
+      if (climate) {
+        // calcular min, max, média temperatura e humidade
+        const temps = climate.temp;
+        // Use the correct humidity property. In generated climate data, humidity is stored as 'humidity'
+        const hums = climate.humidity;
+        let tmin = Math.min(...temps);
+        let tmax = Math.max(...temps);
+        let tsum = temps.reduce((a,b) => a+b, 0);
+        let tavg = tsum / temps.length;
+        let hmin = Math.min(...hums);
+        let hmax = Math.max(...hums);
+        let hsum = hums.reduce((a,b) => a+b, 0);
+        let havg = hsum / hums.length;
+        const tbl = document.createElement('table');
+        tbl.className = 'min-w-full divide-y divide-gray-200 text-sm';
+        tbl.innerHTML = `<thead class="bg-gray-50"><tr>
+          <th class="px-4 py-2 text-left">Variável</th>
+          <th class="px-4 py-2 text-left">Mínimo</th>
+          <th class="px-4 py-2 text-left">Média</th>
+          <th class="px-4 py-2 text-left">Máximo</th>
+        </tr></thead><tbody>
+        <tr><td class="px-4 py-2">Temperatura (°C)</td><td class="px-4 py-2">${tmin.toFixed(2)}</td><td class="px-4 py-2">${tavg.toFixed(2)}</td><td class="px-4 py-2">${tmax.toFixed(2)}</td></tr>
+        <tr><td class="px-4 py-2">Humidade Relativa (%)</td><td class="px-4 py-2">${hmin.toFixed(2)}</td><td class="px-4 py-2">${havg.toFixed(2)}</td><td class="px-4 py-2">${hmax.toFixed(2)}</td></tr>
+        </tbody>`;
+        section('Dados Climáticos', tbl);
+        // gráfico clima: média mensal de temperatura e humidade
+        const monthlyTemps = calculateMonthlyAverage(temps);
+        const monthlyHums = calculateMonthlyAverage(hums);
+        const canvas = document.createElement('canvas');
+        canvas.id = 'reportClimateChart';
+        canvas.style.maxHeight = '300px';
+        section('Gráfico Climático', canvas);
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+            datasets: [
+              { label: 'Temperatura Média (°C)', data: monthlyTemps, backgroundColor: 'rgba(59,130,246,0.6)' },
+              { label: 'Humidade Média (%)', data: monthlyHums, backgroundColor: 'rgba(34,197,94,0.6)' }
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+      } else {
+        section('Dados Climáticos', '<p>Nenhum dado climático disponível.</p>');
+      }
+      // Equipamentos adicionados
+      if (equipmentList && equipmentList.length > 0) {
+        const tbl = document.createElement('table');
+        tbl.className = 'min-w-full divide-y divide-gray-200 text-sm';
+        tbl.innerHTML = `<thead class="bg-gray-50"><tr>
+          <th class="px-4 py-2 text-left">Nome</th><th class="px-4 py-2 text-left">Tipo de Carga</th><th class="px-4 py-2 text-left">Tipo</th><th class="px-4 py-2 text-left">Modo</th><th class="px-4 py-2 text-left">Parâmetros</th><th class="px-4 py-2 text-left">Água (L/kWh)</th>
+        </tr></thead><tbody></tbody>`;
+        const tbody = tbl.querySelector('tbody');
+        equipmentList.forEach(eq => {
+          if (eq.type === 'none') return;
+          let modo = eq.efficiency_mode === 'fixed' ? 'Fixo' : 'Curva';
+          let params = '';
+          if (eq.efficiency_mode === 'fixed') params = eq.fixed_efficiency.toFixed(2);
+          else params = `a=${eq.curve_a.toFixed(2)}, b=${eq.curve_b.toFixed(3)}`;
+          let water = eq.type === 'adiabatic' ? (eq.water_rate_l_per_kwh || 0).toFixed(2) : '-';
+          const typeLabels = {
+            'electric': 'Resistência Elétrica', 'gas_boiler': 'Caldeira a Gás', 'heat_pump': 'Bomba de Calor',
+            'chiller': 'Chiller', 'split': 'Split', 'vrf': 'VRF', 'adiabatic': 'Adiabático',
+            'electric_steam': 'Vapor Elétrico', 'fridge_cycle': 'Ciclo Frigorífico'
+          };
+          const typeName = typeLabels[eq.type] || eq.type;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="px-4 py-2">${eq.name}</td><td class="px-4 py-2">${eq.loadType}</td><td class="px-4 py-2">${typeName}</td><td class="px-4 py-2">${modo}</td><td class="px-4 py-2">${params}</td><td class="px-4 py-2">${water}</td>`;
+          tbody.appendChild(tr);
+        });
+        section('Equipamentos Adicionados', tbl);
+      } else {
+        section('Equipamentos Adicionados', '<p>Nenhum equipamento foi adicionado.</p>');
+      }
+      // Investimentos
+      if (equipmentList && equipmentList.length > 0 && optimizationData) {
+        const tbl = document.createElement('table');
+        tbl.className = 'min-w-full divide-y divide-gray-200 text-sm';
+        tbl.innerHTML = `<thead class="bg-gray-50"><tr>
+          <th class="px-4 py-2 text-left">Nome</th><th class="px-4 py-2 text-left">Tipo de Carga</th><th class="px-4 py-2 text-left">Tipo</th><th class="px-4 py-2 text-left">Pico (kW)</th><th class="px-4 py-2 text-left">Investimento (€)</th>
+        </tr></thead><tbody></tbody>`;
+        const tbody = tbl.querySelector('tbody');
+        equipmentList.forEach(eq => {
+          if (eq.type === 'none') return;
+          const inv = optimizationData[eq.id] ? optimizationData[eq.id].investment || 0 : 0;
+          const peak = computePeakPowerForEq(eq) || 0;
+          const typeLabels = {
+            'electric': 'Resistência Elétrica', 'gas_boiler': 'Caldeira a Gás', 'heat_pump': 'Bomba de Calor',
+            'chiller': 'Chiller', 'split': 'Split', 'vrf': 'VRF', 'adiabatic': 'Adiabático',
+            'electric_steam': 'Vapor Elétrico', 'fridge_cycle': 'Ciclo Frigorífico'
+          };
+          const typeName = typeLabels[eq.type] || eq.type;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="px-4 py-2">${eq.name}</td><td class="px-4 py-2">${eq.loadType}</td><td class="px-4 py-2">${typeName}</td><td class="px-4 py-2">${peak.toFixed(2)}</td><td class="px-4 py-2">${inv.toFixed(0)}</td>`;
+          tbody.appendChild(tr);
+        });
+        section('Investimentos', tbl);
+      } else {
+        section('Investimentos', '<p>Sem dados de investimento.</p>');
+      }
+
+      // Resultados da Simulação
+      if (lastSimulationResults && lastSimulationResults.length > 0) {
+        const tbl = document.createElement('table');
+        tbl.className = 'min-w-full divide-y divide-gray-200 text-sm';
+        tbl.innerHTML = `<thead class="bg-gray-50"><tr>
+          <th class="px-4 py-2 text-left">Nome</th>
+          <th class="px-4 py-2 text-left">Tipo de Carga</th>
+          <th class="px-4 py-2 text-left">Tipo</th>
+          <th class="px-4 py-2 text-left">Pico (kW)</th>
+          <th class="px-4 py-2 text-left">Carga Anual (kWh)</th>
+          <th class="px-4 py-2 text-left">Consumo Elétrico (kWh)</th>
+          <th class="px-4 py-2 text-left">Consumo Gás (kWh)</th>
+          <th class="px-4 py-2 text-left">Consumo Água (m³)</th>
+        </tr></thead><tbody></tbody>`;
+        const tbody = tbl.querySelector('tbody');
+        lastSimulationResults.forEach(res => {
+          const tr = document.createElement('tr');
+          // Translate type names
+          const typeLabels = {
+            'electric': 'Resistência Elétrica', 'gas_boiler': 'Caldeira a Gás', 'heat_pump': 'Bomba de Calor',
+            'chiller': 'Chiller', 'split': 'Split', 'vrf': 'VRF', 'adiabatic': 'Adiabático',
+            'electric_steam': 'Vapor Elétrico', 'fridge_cycle': 'Ciclo Frigorífico'
+          };
+          const typeName = typeLabels[res.equipmentType] || res.equipmentType;
+          const waterM3 = (res.water_liters || 0) / 1000;
+          tr.innerHTML = `<td class="px-4 py-2">${res.equipmentName}</td><td class="px-4 py-2">${res.loadType}</td><td class="px-4 py-2">${typeName}</td><td class="px-4 py-2">${res.peak_kW.toFixed(2)}</td><td class="px-4 py-2">${res.thermal_kWh.toFixed(0)}</td><td class="px-4 py-2">${res.electric_kWh.toFixed(0)}</td><td class="px-4 py-2">${res.gas_kWh.toFixed(0)}</td><td class="px-4 py-2">${waterM3.toFixed(3)}</td>`;
+          tbody.appendChild(tr);
+        });
+        section('Resultados da Simulação', tbl);
+      }
+      // Cenário Base
+      if (baseScenarioMetrics) {
+        let html = `<p>Investimento: ${baseScenarioMetrics.inv.toFixed(0)} €<br>Custos anuais: ${baseScenarioMetrics.cost.toFixed(2)} €<br>Ton CO₂: ${baseScenarioMetrics.co2.toFixed(3)}<br>Consumo de energia: ${baseScenarioMetrics.energy.toFixed(0)} kWh<br>Consumo de água: ${baseScenarioMetrics.water.toFixed(3)} m³</p>`;
+        if (baseScenarioEquipMap) {
+          html += '<p><strong>Equipamentos:</strong></p><ul class="list-disc list-inside">';
+          const labelsPT = { 'heating': 'Aquecimento', 'cooling': 'Arrefecimento', 'humidification': 'Humidificação', 'dehumidification': 'Desumidificação' };
+          Object.keys(baseScenarioEquipMap).forEach(key => {
+            const item = baseScenarioEquipMap[key];
+            html += `<li>${labelsPT[key]}: ${item.equipmentName} (${item.equipmentType})</li>`;
+          });
+          html += '</ul>';
+        }
+        section('Cenário Base', html);
+      } else {
+        section('Cenário Base', '<p>O cenário base não foi definido.</p>');
+      }
+      // Cenários optimizados
+      if (scenarioMetrics && scenarioMetrics.length > 0) {
+        const tbl = document.createElement('table');
+        tbl.className = 'min-w-full divide-y divide-gray-200 text-sm';
+        tbl.innerHTML = `<thead class="bg-gray-50"><tr>
+          <th class="px-4 py-2 text-left">Cenário</th><th class="px-4 py-2 text-left">Investimento (€)</th><th class="px-4 py-2 text-left">Custo (€/ano)</th><th class="px-4 py-2 text-left">Ton CO₂</th><th class="px-4 py-2 text-left">Consumo (kWh)</th><th class="px-4 py-2 text-left">Água (m³)</th><th class="px-4 py-2 text-left">ROI (%)</th><th class="px-4 py-2 text-left">VAL</th><th class="px-4 py-2 text-left">TIR (%)</th>
+        </tr></thead><tbody></tbody>`;
+        const tbody = tbl.querySelector('tbody');
+        scenarioMetrics.forEach((m, idx) => {
+          const label = scenarioLabels[idx] || `Cenário ${idx+1}`;
+          // calcular ROI, VAL e TIR em relação ao base
+          let roi = '-';
+          let val = '-';
+          let tir = '-';
+          if (baseScenarioMetrics) {
+            const investDiff = m.inv - baseScenarioMetrics.inv;
+            const savings = baseScenarioMetrics.cost - m.cost;
+            if (m.inv > 0) roi = ((savings / m.inv) * 100).toFixed(1);
+            const years = 10;
+            const rate = 0.05;
+            val = (-investDiff + savings * (1 - Math.pow(1 + rate, -years)) / rate).toFixed(0);
+            if (savings !== 0) {
+              let low = -0.99; let high = 1.0;
+              for (let i = 0; i < 50; i++) {
+                const mid = (low + high) / 2;
+                const f = -investDiff + savings * (1 - Math.pow(1 + mid, -years)) / mid;
+                if (isNaN(f)) break;
+                if (f > 0) low = mid; else high = mid;
+              }
+              tir = (((low + high) / 2) * 100).toFixed(1);
+            }
+          }
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="px-4 py-2">${label}</td><td class="px-4 py-2">${m.inv.toFixed(0)}</td><td class="px-4 py-2">${m.cost.toFixed(2)}</td><td class="px-4 py-2">${m.co2.toFixed(3)}</td><td class="px-4 py-2">${m.energy.toFixed(0)}</td><td class="px-4 py-2">${m.water.toFixed(3)}</td><td class="px-4 py-2">${roi}</td><td class="px-4 py-2">${val}</td><td class="px-4 py-2">${tir}</td>`;
+          tbody.appendChild(tr);
+        });
+        section('Cenários Optimizados', tbl);
+      } else {
+        section('Cenários Optimizados', '<p>Não foram gerados cenários optimizados.</p>');
+      }
+      // Comparativo e análise financeira
+      if (baseScenarioMetrics && scenarioMetrics && scenarioMetrics.length > 0) {
+        // escolher o cenário com menor custo
+        let bestIdx = 0;
+        let minCost = scenarioMetrics[0].cost;
+        for (let i = 1; i < scenarioMetrics.length; i++) {
+          if (scenarioMetrics[i].cost < minCost) { minCost = scenarioMetrics[i].cost; bestIdx = i; }
+        }
+        const mBase = baseScenarioMetrics;
+        const mOpt = scenarioMetrics[bestIdx];
+        // construir tabela comparativa
+        const tbl = document.createElement('table');
+        tbl.className = 'min-w-full divide-y divide-gray-200 text-sm';
+        tbl.innerHTML = `<thead class="bg-gray-50"><tr>
+          <th class="px-4 py-2 text-left">Métrica</th><th class="px-4 py-2 text-left">Base</th><th class="px-4 py-2 text-left">Melhor Cenário</th><th class="px-4 py-2 text-left">Diferença</th>
+        </tr></thead><tbody></tbody>`;
+        const tbody = tbl.querySelector('tbody');
+        const metrics = [
+          { key: 'inv', label: 'Investimento (€)' },
+          { key: 'cost', label: 'OPEX (€/ano)' },
+          { key: 'co2', label: 'Ton CO₂' },
+          { key: 'energy', label: 'Consumo de energia (kWh)' },
+          { key: 'water', label: 'Água (m³)' }
+        ];
+        metrics.forEach(metric => {
+          const diff = mOpt[metric.key] - mBase[metric.key];
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="px-4 py-2">${metric.label}</td><td class="px-4 py-2">${mBase[metric.key].toFixed(2)}</td><td class="px-4 py-2">${mOpt[metric.key].toFixed(2)}</td><td class="px-4 py-2">${diff.toFixed(2)}</td>`;
+          tbody.appendChild(tr);
+        });
+        // ROI, VAL, TIR for best scenario
+        const investDiff = mOpt.inv - mBase.inv;
+        const savings = mBase.cost - mOpt.cost;
+        const years = 10;
+        const rate = 0.05;
+        let roi = '-';
+        let val = '-';
+        let tir = '-';
+        if (mOpt.inv > 0) roi = ((savings / mOpt.inv) * 100).toFixed(1);
+        val = (-investDiff + savings * (1 - Math.pow(1 + rate, -years)) / rate).toFixed(0);
+        if (savings !== 0) {
+          let low = -0.99; let high = 1.0;
+          for (let i = 0; i < 50; i++) {
+            const mid = (low + high) / 2;
+            const f = -investDiff + savings * (1 - Math.pow(1 + mid, -years)) / mid;
+            if (isNaN(f)) break;
+            if (f > 0) low = mid; else high = mid;
+          }
+          tir = (((low + high) / 2) * 100).toFixed(1);
+        }
+        const trROI = document.createElement('tr');
+        trROI.innerHTML = `<td class="px-4 py-2">ROI (%)</td><td class="px-4 py-2">-</td><td class="px-4 py-2">-</td><td class="px-4 py-2">${roi}</td>`;
+        tbody.appendChild(trROI);
+        const trVAL = document.createElement('tr');
+        trVAL.innerHTML = `<td class="px-4 py-2">VAL</td><td class="px-4 py-2">-</td><td class="px-4 py-2">-</td><td class="px-4 py-2">${val}</td>`;
+        tbody.appendChild(trVAL);
+        const trTIR = document.createElement('tr');
+        trTIR.innerHTML = `<td class="px-4 py-2">TIR (%)</td><td class="px-4 py-2">-</td><td class="px-4 py-2">-</td><td class="px-4 py-2">${tir}</td>`;
+        tbody.appendChild(trTIR);
+        // adicionar gráfico comparativo
+        const canvas = document.createElement('canvas');
+        canvas.id = 'reportComparisonChart';
+        canvas.style.maxHeight = '300px';
+        // inserir secção
+        section('Comparativo e Análise Financeira', tbl);
+        section('Gráfico Comparativo', canvas);
+        const ctx2 = canvas.getContext('2d');
+        new Chart(ctx2, {
+          type: 'bar',
+          data: {
+            labels: metrics.map(m => m.label),
+            datasets: [
+              { label: 'Base', data: metrics.map(m => mBase[m.key]), backgroundColor: 'rgba(59,130,246,0.5)' },
+              { label: scenarioLabels[bestIdx] || 'Melhor Cenário', data: metrics.map(m => mOpt[m.key]), backgroundColor: 'rgba(234,179,8,0.5)' }
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+        });
+      } else {
+        section('Comparativo e Análise Financeira', '<p>Sem dados suficientes para análise comparativa.</p>');
+      }
+      // Conclusão
+      {
+        let conclusionHtml = '';
+        if (baseScenarioMetrics && scenarioMetrics && scenarioMetrics.length > 0) {
+          // Encontrar melhor cenário (menor custo)
+          let bestIdx = 0;
+          let minCost = scenarioMetrics[0].cost;
+          for (let i = 1; i < scenarioMetrics.length; i++) {
+            if (scenarioMetrics[i].cost < minCost) { minCost = scenarioMetrics[i].cost; bestIdx = i; }
+          }
+          const labelOpt = scenarioLabels && scenarioLabels[bestIdx] ? scenarioLabels[bestIdx] : `Cenário ${bestIdx+1}`;
+          const mBase = baseScenarioMetrics;
+          const mOpt = scenarioMetrics[bestIdx];
+          const diffCost = mBase.cost - mOpt.cost;
+          const diffCO2 = mBase.co2 - mOpt.co2;
+          const diffEnergy = mBase.energy - mOpt.energy;
+          const diffWater = mBase.water - mOpt.water;
+          const roi = mOpt.inv > 0 ? ((mBase.cost - mOpt.cost) / mOpt.inv) * 100 : 0;
+          conclusionHtml += `<p>Em comparação com o cenário base, o cenário optimizado <strong>${labelOpt}</strong> apresentou melhorias significativas:</p><ul class="list-disc list-inside">`;
+          conclusionHtml += `<li>Redução anual de custos operacionais (OPEX): ${diffCost.toFixed(2)} €</li>`;
+          conclusionHtml += `<li>Redução de emissões de CO₂: ${diffCO2.toFixed(3)} ton</li>`;
+          conclusionHtml += `<li>Redução do consumo de energia: ${diffEnergy.toFixed(0)} kWh</li>`;
+          if (Math.abs(diffWater) > 0.001) conclusionHtml += `<li>Redução do consumo de água: ${diffWater.toFixed(3)} m³</li>`;
+          conclusionHtml += `<li>Retorno sobre o investimento estimado (ROI): ${roi.toFixed(1)} %</li>`;
+          conclusionHtml += `</ul><p>Estes resultados evidenciam a importância de seleccionar soluções energeticamente eficientes e de analisar diferentes combinações de equipamentos. Recomenda‑se a adopção do cenário optimizado evidenciado e a monitorização contínua do desempenho para validar as poupanças previstas.</p>`;
+        } else {
+          conclusionHtml = `<p>Os resultados apresentados demonstram a importância de seleccionar equipamentos energeticamente eficientes e de avaliar diferentes cenários antes da implementação. Recomenda‑se a realização de simulações completas (com cargas, clima, equipamentos e cenários) para obter conclusões mais detalhadas.</p>`;
+        }
+        section('Conclusão', conclusionHtml);
+      }
+      // Página em branco antes da contra capa
+      section('Página em branco', '<p style="min-height:200px;"></p>');
+      // Contra Capa
+      section('Contra Capa', '<p class="text-center mt-24">Fim do Relatório</p>');
+    }
+
+    function renderThermalDailyChart(dateStr) {
+      if (!thermalLoads || !dateStr) return;
+      const dayOfYear = getDayOfYear(dateStr);
+      const startHour = (dayOfYear - 1) * 24;
+      if (startHour < 0 || startHour > 8760 - 24) return;
+      const dailyHeating = thermalLoads.data.heating.slice(startHour, startHour + 24);
+      const dailyCooling = thermalLoads.data.cooling.slice(startHour, startHour + 24);
+      const labels = Array.from({ length: 24 }, (_, i) => `${i}h`);
+      // Destroy existing daily chart
+      if (chartInstances.thermalDailyChart) {
+        chartInstances.thermalDailyChart.destroy();
+      }
+      const ctx = document.getElementById('thermalDailyChart').getContext('2d');
+      chartInstances.thermalDailyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Aquecimento (kW)', data: dailyHeating, borderColor: 'rgba(239,68,68,0.7)', fill: false, borderWidth: 2, pointRadius: 2 },
+            { label: 'Arrefecimento (kW)', data: dailyCooling, borderColor: 'rgba(59,130,246,0.7)', fill: false, borderWidth: 2, pointRadius: 2 },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: `Hora (Dia ${dayOfYear})` } }, y: { title: { display: true, text: 'Potência (kW)' } } } }
+      });
+    }
+
+    // Climate File Handling
+    document.getElementById('climate-file').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const separator = document.getElementById('climate-separator').value;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        const text = ev.target.result;
+        let lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+        let headerLine = 0;
+        if (file.name.toLowerCase().endsWith('.epw')) {
+          headerLine = 8;
+        }
+        const header = parseCSV(lines[headerLine], separator);
+        const headers = header[0];
+        const dataLines = lines.slice(headerLine + 1);
+        const data = parseCSV(dataLines.join('\n'), separator);
+        rawClimate = { headers, data };
+        // If EPW, set default columns
+        if (file.name.toLowerCase().endsWith('.epw')) {
+          climateCols = { temp: 6, hum: 8 };
+        }
+        // Build mapping selects
+        const container = document.getElementById('climate-cols-select');
+        container.innerHTML = '';
+        const vars = [
+          { key: 'temp', label: 'Temperatura Seca (°C)', defaultIndex: climateCols.temp },
+          { key: 'hum', label: 'Humidade Relativa (%)', defaultIndex: climateCols.hum },
+        ];
+        vars.forEach(v => {
+          const div = document.createElement('div');
+          const label = document.createElement('label');
+          label.textContent = v.label;
+          label.className = 'block text-sm font-medium text-gray-700';
+          const select = document.createElement('select');
+          select.className = 'mt-1 block w-full rounded-md border-gray-300 shadow-sm';
+          headers.forEach((h, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.textContent = h;
+            if (idx === v.defaultIndex) opt.selected = true;
+            select.appendChild(opt);
+          });
+          select.addEventListener('change', () => {
+            climateCols[v.key] = +select.value;
+          });
+          div.appendChild(label);
+          div.appendChild(select);
+          container.appendChild(div);
+        });
+        document.getElementById('climate-columns').classList.remove('hidden');
+      };
+      reader.readAsText(file);
+    });
+
+    // Process Climate Data
+    document.getElementById('process-climate').addEventListener('click', () => {
+      if (!rawClimate || rawClimate.data.length < 8760) {
+        alert('Dados insuficientes. São necessárias 8760 horas.');
+        return;
+      }
+      const data = { temp: [], humidity: [] };
+      for (let i = 0; i < 8760; i++) {
+        const row = rawClimate.data[i];
+        data.temp.push(parseFloat(row[climateCols.temp]) || 0);
+        data.humidity.push(parseFloat(row[climateCols.hum]) || 0);
+      }
+      const summary = {
+        'Temperatura Seca (°C)': calculateSummary(data.temp, false),
+        'Humidade Relativa (%)': calculateSummary(data.humidity, false),
+      };
+      climateData = { data, summary };
+      // Fill summary table
+      const tbody = document.getElementById('climate-summary-body');
+      tbody.innerHTML = '';
+      Object.keys(summary).forEach(key => {
+        const s = summary[key];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${key}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${s.min.toFixed(2)}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${s.max.toFixed(2)}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${s.avg.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('climate-results').classList.remove('hidden');
+      document.getElementById('climate-daily-date').value = new Date().toISOString().split('T')[0];
+      renderClimateCharts();
+      // Update simulation availability
+      updateSimulationInputs();
+    });
+
+    function renderClimateCharts() {
+      if (!climateData) return;
+      // Destroy previous climate charts
+      ['climateAnnualHourlyChart','climateAnnualMonthlyChart','climateAnnualHistTempChart','climateDailyChart'].forEach(id => {
+        if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+      });
+      const data = climateData.data;
+      const hours = Array.from({ length: 8760 }, (_, i) => i + 1);
+      const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      // Annual hourly line chart
+      const ctx1 = document.getElementById('climateAnnualHourlyChart').getContext('2d');
+      chartInstances.climateAnnualHourlyChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: hours,
+          datasets: [
+            { label: 'Temperatura (°C)', data: data.temp, borderColor: 'rgba(239,68,68,0.7)', fill: false, borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
+            { label: 'Humidade (%)', data: data.humidity, borderColor: 'rgba(59,130,246,0.7)', fill: false, borderWidth: 1, pointRadius: 0, yAxisID: 'y1' },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Horas' } }, y: { title: { display: true, text: 'Temperatura (°C)' }, position: 'left' }, y1: { title: { display: true, text: 'Humidade (%)' }, position: 'right', grid: { drawOnChartArea: false } } }, plugins: { legend: { position: 'top' } } }
+      });
+      // Monthly average bar chart
+      const ctx2 = document.getElementById('climateAnnualMonthlyChart').getContext('2d');
+      chartInstances.climateAnnualMonthlyChart = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            { label: 'Temperatura Média (°C)', data: calculateMonthlyAverage(data.temp), backgroundColor: 'rgba(239,68,68,0.7)', yAxisID: 'y' },
+            { label: 'Humidade Média (%)', data: calculateMonthlyAverage(data.humidity), backgroundColor: 'rgba(59,130,246,0.7)', yAxisID: 'y1' },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Mês' } }, y: { title: { display: true, text: 'Temperatura (°C)' }, position: 'left', beginAtZero: true }, y1: { title: { display: true, text: 'Humidade (%)' }, position: 'right', grid: { drawOnChartArea: false }, beginAtZero: true } }, plugins: { legend: { position: 'top' } } }
+      });
+      // Histogram - temperature
+      const histTemp = calculateHistogram(data.temp);
+      const ctx3 = document.getElementById('climateAnnualHistTempChart').getContext('2d');
+      chartInstances.climateAnnualHistTempChart = new Chart(ctx3, {
+        type: 'bar',
+        data: { labels: histTemp.labels, datasets: [{ label: 'Nº de Horas', data: histTemp.values, backgroundColor: 'rgba(239,68,68,0.7)' }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Temperatura (°C)' } }, y: { title: { display: true, text: 'Nº de Horas' }, beginAtZero: true } }, plugins: { legend: { position: 'top' } } }
+      });
+      // Daily chart initial render
+      renderClimateDailyChart(document.getElementById('climate-daily-date').value);
+    }
+
+    document.getElementById('climate-daily-date').addEventListener('input', e => {
+      renderClimateDailyChart(e.target.value);
+    });
+
+    function renderClimateDailyChart(dateStr) {
+      if (!climateData || !dateStr) return;
+      const dayOfYear = getDayOfYear(dateStr);
+      const startHour = (dayOfYear - 1) * 24;
+      if (startHour < 0 || startHour > 8760 - 24) return;
+      const dailyTemp = climateData.data.temp.slice(startHour, startHour + 24);
+      const dailyHum = climateData.data.humidity.slice(startHour, startHour + 24);
+      const labels = Array.from({ length: 24 }, (_, i) => `${i}h`);
+      if (chartInstances.climateDailyChart) {
+        chartInstances.climateDailyChart.destroy();
+      }
+      const ctx = document.getElementById('climateDailyChart').getContext('2d');
+      chartInstances.climateDailyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Temperatura (°C)', data: dailyTemp, borderColor: 'rgba(239,68,68,0.7)', fill: false, borderWidth: 2, pointRadius: 2, yAxisID: 'y' },
+            { label: 'Humidade (%)', data: dailyHum, borderColor: 'rgba(59,130,246,0.7)', fill: false, borderWidth: 2, pointRadius: 2, yAxisID: 'y1' },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: `Hora (Dia ${dayOfYear})` } }, y: { title: { display: true, text: 'Temperatura (°C)' }, position: 'left' }, y1: { title: { display: true, text: 'Humidade (%)' }, position: 'right', grid: { drawOnChartArea: false } } }, plugins: { legend: { position: 'top' } } }
+      });
+    }
+
+    // Generate Climate Data
+    function populateLocationSelect() {
+      const select = document.getElementById('location-select');
+      select.innerHTML = '';
+      const portugal = Object.keys(climateGenerationParams).filter(k => climateGenerationParams[k].country === 'PT').sort();
+      const world = Object.keys(climateGenerationParams).filter(k => climateGenerationParams[k].country === 'World').sort();
+      const optGroupPT = document.createElement('optgroup');
+      optGroupPT.label = 'Portugal';
+      portugal.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc;
+        opt.textContent = loc;
+        optGroupPT.appendChild(opt);
+      });
+      const optGroupWorld = document.createElement('optgroup');
+      optGroupWorld.label = 'Mundo';
+      world.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc;
+        opt.textContent = loc;
+        optGroupWorld.appendChild(opt);
+      });
+      select.appendChild(optGroupPT);
+      select.appendChild(optGroupWorld);
+      select.value = 'Lisboa';
+    }
+    populateLocationSelect();
+
+    document.getElementById('generate-climate').addEventListener('click', () => {
+      const loc = document.getElementById('location-select').value;
+      const params = climateGenerationParams[loc];
+      if (!params) {
+        alert('Localização não encontrada.');
+        return;
+      }
+      const data = { temp: [], humidity: [] };
+      const daysInMonth = [31,28,31,30,31,30,31,31,30,31,30,31];
+      let hourOfYear = 0;
+      for (let m = 0; m < 12; m++) {
+        const avg_t = params.t_avg[m];
+        const amp_t = params.t_amp[m] / 2;
+        for (let d = 0; d < daysInMonth[m]; d++) {
+          for (let h = 0; h < 24; h++) {
+            const daily_variation = -Math.cos((h - 4) * (2 * Math.PI) / 24) * amp_t;
+            const noise = (Math.random() - 0.5) * 2;
+            const temp = avg_t + daily_variation + noise;
+            const hum = Math.max(20, Math.min(95, 80 - (temp - 15) * 2 + (Math.random() - 0.5) * 10));
+            data.temp[hourOfYear] = temp;
+            data.humidity[hourOfYear] = hum;
+            hourOfYear++;
+          }
+        }
+      }
+      const summary = {
+        'Temperatura Seca (°C)': calculateSummary(data.temp, false),
+        'Humidade Relativa (%)': calculateSummary(data.humidity, false),
+      };
+      generatedClimateData = { data, summary, location: loc };
+      // Fill summary
+      document.getElementById('gen-location-name').textContent = loc;
+      const tbody = document.getElementById('gen-climate-summary-body');
+      tbody.innerHTML = '';
+      Object.keys(summary).forEach(key => {
+        const s = summary[key];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${key}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${s.min.toFixed(2)}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${s.max.toFixed(2)}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${s.avg.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('gen-climate-results').classList.remove('hidden');
+      renderGeneratedClimateCharts();
+      // Update simulation availability
+      updateSimulationInputs();
+    });
+
+    function renderGeneratedClimateCharts() {
+      if (!generatedClimateData) return;
+      // Destroy previous generated climate charts
+      ['genClimateAnnualHourlyChart','genClimateAnnualMonthlyChart','genClimateAnnualHistTempChart'].forEach(id => {
+        if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+      });
+      const data = generatedClimateData.data;
+      const hours = Array.from({ length: 8760 }, (_, i) => i + 1);
+      const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      // Annual hourly
+      const ctx1 = document.getElementById('genClimateAnnualHourlyChart').getContext('2d');
+      chartInstances.genClimateAnnualHourlyChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: hours,
+          datasets: [
+            { label: 'Temperatura (°C)', data: data.temp, borderColor: 'rgba(239,68,68,0.7)', fill: false, borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
+            { label: 'Humidade (%)', data: data.humidity, borderColor: 'rgba(59,130,246,0.7)', fill: false, borderWidth: 1, pointRadius: 0, yAxisID: 'y1' },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Horas' } }, y: { title: { display: true, text: 'Temperatura (°C)' }, position: 'left' }, y1: { title: { display: true, text: 'Humidade (%)' }, position: 'right', grid: { drawOnChartArea: false } } }, plugins: { legend: { position: 'top' } } }
+      });
+      // Monthly average
+      const ctx2 = document.getElementById('genClimateAnnualMonthlyChart').getContext('2d');
+      chartInstances.genClimateAnnualMonthlyChart = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            { label: 'Temperatura Média (°C)', data: calculateMonthlyAverage(data.temp), backgroundColor: 'rgba(239,68,68,0.7)', yAxisID: 'y' },
+            { label: 'Humidade Média (%)', data: calculateMonthlyAverage(data.humidity), backgroundColor: 'rgba(59,130,246,0.7)', yAxisID: 'y1' },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Mês' } }, y: { title: { display: true, text: 'Temperatura (°C)' }, position: 'left', beginAtZero: true }, y1: { title: { display: true, text: 'Humidade (%)' }, position: 'right', grid: { drawOnChartArea: false }, beginAtZero: true } }, plugins: { legend: { position: 'top' } } }
+      });
+      // Histogram
+      const histTemp = calculateHistogram(data.temp);
+      const ctx3 = document.getElementById('genClimateAnnualHistTempChart').getContext('2d');
+      chartInstances.genClimateAnnualHistTempChart = new Chart(ctx3, {
+        type: 'bar',
+        data: { labels: histTemp.labels, datasets: [{ label: 'Nº de Horas', data: histTemp.values, backgroundColor: 'rgba(239,68,68,0.7)' }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Temperatura (°C)' } }, y: { title: { display: true, text: 'Nº de Horas' }, beginAtZero: true } }, plugins: { legend: { position: 'top' } } }
+      });
+    }
+
+    // Export Generated Climate CSV
+    document.getElementById('export-gen-climate').addEventListener('click', () => {
+      if (!generatedClimateData) {
+        alert('Não existem dados climáticos gerados para exportar.');
+        return;
+      }
+      let csvContent = 'Hora,Temperatura_Seca_C,Humidade_Relativa_perc\n';
+      for (let i = 0; i < 8760; i++) {
+        const temp = generatedClimateData.data.temp[i]?.toFixed(2) ?? '0';
+        const hum = generatedClimateData.data.humidity[i]?.toFixed(2) ?? '0';
+        csvContent += `${i + 1},${temp},${hum}\n`;
+      }
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `clima_gerado_${generatedClimateData.location.replace(/ /g, '_')}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    // Equipment Management
+    document.getElementById('add-equipment').addEventListener('click', () => {
+      addEquipment();
+    });
+    function generateUUID() {
+      // Simple UUID generator
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+    function addEquipment() {
+      const newEquip = {
+        id: generateUUID(),
+        name: `Novo Equipamento ${equipmentList.length + 1}`,
+        loadType: 'heating',
+        type: 'electric',
+        efficiency_mode: 'fixed',
+        fixed_efficiency: 1.0,
+        curve_a: 0,
+        curve_b: 0,
+        efficiency_kwh_per_kg: 0.75,
+        water_rate_l_per_kwh: 1.44 // taxa de água (litros por kWh térmico) para sistemas adiabáticos
+      };
+      equipmentList.push(newEquip);
+      renderEquipmentList();
+    }
+    function removeEquipment(id) {
+      equipmentList = equipmentList.filter(eq => eq.id !== id);
+      renderEquipmentList();
+    }
+    function updateEquipment(id, key, value) {
+      equipmentList = equipmentList.map(eq => {
+        if (eq.id === id) {
+          const updated = { ...eq };
+          if (key === 'loadType') {
+            updated.loadType = value;
+            // Reset type based on load
+            if (value === 'heating') updated.type = 'electric';
+            else if (value === 'cooling') updated.type = 'chiller';
+            else if (value === 'humidification') updated.type = 'electric_steam';
+            else if (value === 'dehumidification') updated.type = 'fridge_cycle';
+            else updated.type = 'none';
+          } else if (key === 'type') {
+            updated.type = value;
+            // Quando o tipo muda, definir parâmetros padrão consoante tipo e carga
+            if (value === 'split') {
+              // Mini-split (ductless). Ajustar modo eficiência para curva.
+              updated.efficiency_mode = 'curve';
+              if (updated.loadType === 'heating') {
+                // COP ≈ 3.79 + 0.11 * T_ext (estimado a partir de dados A-10/W55 e A7/W35)
+                updated.curve_a = 3.79;
+                updated.curve_b = 0.11;
+              } else if (updated.loadType === 'cooling') {
+                // EER aproximado: -0.133*T_ext + 7.33 (eficiência diminui com temperatura)
+                updated.curve_a = 7.33;
+                updated.curve_b = -0.133;
+              }
+            } else if (value === 'vrf') {
+              // VRF. Ajustar para curva com inclinação moderada
+              updated.efficiency_mode = 'curve';
+              if (updated.loadType === 'heating') {
+                // COP ≈ 2.38 + 0.088 * T_ext (baseado em estudo ORNL)
+                updated.curve_a = 2.38;
+                updated.curve_b = 0.088;
+              } else if (updated.loadType === 'cooling') {
+                // COP de arrefecimento ≈ 7.0 - 0.1*T_ext (VRF mais eficiente)
+                updated.curve_a = 7.0;
+                updated.curve_b = -0.1;
+              }
+            } else if (value === 'adiabatic') {
+              // Sistemas adiabáticos: eficiência muito elevada e consumo de água
+              updated.efficiency_mode = 'fixed';
+              updated.fixed_efficiency = 30; // EER típico (~30-40). Opta-se por 30 como valor conservador
+              updated.water_rate_l_per_kwh = 1.44; // litros de água por kWh térmico
+            }
+          } else if (key === 'efficiency_mode') {
+            updated.efficiency_mode = value;
+          } else if (key === 'fixed_efficiency' || key === 'curve_a' || key === 'curve_b' || key === 'efficiency_kwh_per_kg') {
+            updated[key] = parseFloat(value);
+          } else if (key === 'water_rate_l_per_kwh') {
+            updated.water_rate_l_per_kwh = parseFloat(value);
+          } else if (key === 'name') {
+            updated.name = value;
+          }
+          return updated;
+        } else {
+          return eq;
+        }
+      });
+      renderEquipmentList();
+    }
+    function renderEquipmentList() {
+      const container = document.getElementById('equipment-list');
+      container.innerHTML = '';
+      equipmentList.forEach(eq => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-6 rounded-lg shadow-md border border-gray-200';
+        // Header
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'flex justify-between items-center mb-4';
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = eq.name;
+        nameInput.className = 'text-xl font-semibold border-b border-gray-300 focus:border-blue-500 outline-none flex-1';
+        // Usar evento 'change' para evitar recarregar a interface a cada tecla
+        nameInput.addEventListener('change', () => {
+          updateEquipment(eq.id, 'name', nameInput.value);
+        });
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remover';
+        removeBtn.className = 'px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-red-700';
+        removeBtn.addEventListener('click', () => {
+          removeEquipment(eq.id);
+        });
+        headerDiv.appendChild(nameInput);
+        headerDiv.appendChild(removeBtn);
+        div.appendChild(headerDiv);
+        // Grid container
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-1 md:grid-cols-3 gap-6';
+        // Column 1: Load type and equipment type
+        const col1 = document.createElement('div');
+        col1.className = 'space-y-4 p-4 border rounded-lg';
+        // Load type
+        const loadLabel = document.createElement('label');
+        loadLabel.className = 'block text-sm font-medium';
+        loadLabel.textContent = 'Tipo de Carga:';
+        const loadSelect = document.createElement('select');
+        loadSelect.className = 'w-full rounded-md border-gray-300';
+        ['heating','cooling','humidification','dehumidification'].forEach(val => {
+          const opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = val === 'heating' ? 'Aquecimento' : val === 'cooling' ? 'Arrefecimento' : val === 'humidification' ? 'Humidificação' : 'Desumidificação';
+          if (eq.loadType === val) opt.selected = true;
+          loadSelect.appendChild(opt);
+        });
+        loadSelect.addEventListener('change', () => {
+          updateEquipment(eq.id, 'loadType', loadSelect.value);
+        });
+        // Equipment type select depends on load
+        const typeLabel = document.createElement('label');
+        typeLabel.className = 'block text-sm font-medium';
+        typeLabel.textContent = 'Tipo de Equipamento:';
+        const typeSelect = document.createElement('select');
+        typeSelect.className = 'w-full rounded-md border-gray-300';
+        function populateTypeOptions() {
+          typeSelect.innerHTML = '';
+          let options = [];
+          if (eq.loadType === 'heating') {
+            // adicionar opções de sistema Split e VRF para aquecimento
+            options = [
+              { val: 'none', label: 'Nenhum' },
+              { val: 'electric', label: 'Resistência Elétrica' },
+              { val: 'gas_boiler', label: 'Caldeira a Gás' },
+              { val: 'heat_pump', label: 'Bomba de Calor' },
+              { val: 'split', label: 'Split' },
+              { val: 'vrf', label: 'VRF' }
+            ];
+          } else if (eq.loadType === 'cooling') {
+            // adicionar opções split, VRF e adiabático para arrefecimento
+            options = [
+              { val: 'none', label: 'Nenhum' },
+              { val: 'heat_pump', label: 'Bomba de Calor' },
+              { val: 'chiller', label: 'Chiller' },
+              { val: 'split', label: 'Split' },
+              { val: 'vrf', label: 'VRF' },
+              { val: 'adiabatic', label: 'Adiabático' }
+            ];
+          } else if (eq.loadType === 'humidification') {
+            options = [ { val: 'none', label: 'Nenhum' }, { val: 'electric_steam', label: 'Vapor Elétrico' } ];
+          } else if (eq.loadType === 'dehumidification') {
+            options = [ { val: 'none', label: 'Nenhum' }, { val: 'fridge_cycle', label: 'Ciclo Frigorífico' } ];
+          }
+          options.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.val;
+            opt.textContent = o.label;
+            if (eq.type === o.val) opt.selected = true;
+            typeSelect.appendChild(opt);
+          });
+        }
+        populateTypeOptions();
+        typeSelect.addEventListener('change', () => {
+          updateEquipment(eq.id, 'type', typeSelect.value);
+        });
+        col1.appendChild(loadLabel);
+        col1.appendChild(loadSelect);
+        col1.appendChild(typeLabel);
+        col1.appendChild(typeSelect);
+        grid.appendChild(col1);
+        // Columns 2 & 3: Efficiency fields based on equipment type
+        if (eq.type !== 'none') {
+          if (eq.loadType === 'heating' || eq.loadType === 'cooling') {
+            // Efficiency mode
+            const col2 = document.createElement('div');
+            col2.className = 'space-y-4 p-4 border rounded-lg';
+            const modeLabel = document.createElement('label');
+            modeLabel.className = 'block text-sm font-medium';
+            modeLabel.textContent = 'Modo de Eficiência:';
+            const modeSelect = document.createElement('select');
+            modeSelect.className = 'w-full rounded-md border-gray-300';
+            [ { val: 'fixed', label: 'Eficiência Fixa' }, { val: 'curve', label: 'Curva (f(T_ext))' } ].forEach(o => {
+              const opt = document.createElement('option');
+              opt.value = o.val;
+              opt.textContent = o.label;
+              if (eq.efficiency_mode === o.val) opt.selected = true;
+              modeSelect.appendChild(opt);
+            });
+            modeSelect.addEventListener('change', () => {
+              updateEquipment(eq.id, 'efficiency_mode', modeSelect.value);
+            });
+            col2.appendChild(modeLabel);
+            col2.appendChild(modeSelect);
+            grid.appendChild(col2);
+            // Efficiency value or curve
+            const col3 = document.createElement('div');
+            col3.className = 'space-y-4 p-4 border rounded-lg';
+            if (eq.efficiency_mode === 'fixed') {
+              const label = document.createElement('label');
+              label.className = 'block text-sm';
+              label.textContent = 'Eficiência/COP/EER Fixo:';
+              const input = document.createElement('input');
+              input.type = 'number';
+              input.step = '0.1';
+              input.value = eq.fixed_efficiency;
+              input.className = 'w-full rounded-md border-gray-300';
+              // Atualizar após sair do campo para não re-renderizar enquanto edita
+              input.addEventListener('change', () => {
+                updateEquipment(eq.id, 'fixed_efficiency', input.value);
+              });
+              col3.appendChild(label);
+              col3.appendChild(input);
+            } else {
+              const p = document.createElement('p');
+              p.className = 'text-sm font-medium';
+              p.textContent = 'Eff = a + b * T_ext';
+              const labelA = document.createElement('label');
+              labelA.className = 'block text-sm';
+              labelA.textContent = 'Parâmetro \"a\":';
+              const inputA = document.createElement('input');
+              inputA.type = 'number';
+              inputA.step = '0.01';
+              inputA.value = eq.curve_a;
+              inputA.className = 'w-full rounded-md border-gray-300';
+              inputA.addEventListener('change', () => {
+                updateEquipment(eq.id, 'curve_a', inputA.value);
+              });
+              const labelB = document.createElement('label');
+              labelB.className = 'block text-sm';
+              labelB.textContent = 'Parâmetro \"b\":';
+              const inputB = document.createElement('input');
+              inputB.type = 'number';
+              inputB.step = '0.01';
+              inputB.value = eq.curve_b;
+              inputB.className = 'w-full rounded-md border-gray-300';
+              inputB.addEventListener('change', () => {
+                updateEquipment(eq.id, 'curve_b', inputB.value);
+              });
+              col3.appendChild(p);
+              col3.appendChild(labelA);
+              col3.appendChild(inputA);
+              col3.appendChild(labelB);
+              col3.appendChild(inputB);
+
+            }
+            // Se o equipamento for adiabático, adicionar campos de consumo de água
+            if (eq.type === 'adiabatic') {
+              const waterLabel = document.createElement('label');
+              waterLabel.className = 'block text-sm pt-2';
+              waterLabel.textContent = 'Consumo de água (L/kWh térmico):';
+              const waterInput = document.createElement('input');
+              waterInput.type = 'number';
+              waterInput.step = '0.01';
+              waterInput.value = eq.water_rate_l_per_kwh;
+              waterInput.className = 'w-full rounded-md border-gray-300';
+              // actualizar consumo de água apenas após o utilizador terminar a edição
+              waterInput.addEventListener('change', () => {
+                updateEquipment(eq.id, 'water_rate_l_per_kwh', waterInput.value);
+              });
+              col3.appendChild(waterLabel);
+              col3.appendChild(waterInput);
+            }
+
+            // Para modo curva em aquecimento ou arrefecimento: mostrar botão para visualizar curva
+            if (eq.efficiency_mode === 'curve' && (eq.loadType === 'heating' || eq.loadType === 'cooling')) {
+              const curveBtn = document.createElement('button');
+              curveBtn.className = 'mt-2 px-4 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700';
+              curveBtn.textContent = 'Visualizar Curva';
+              curveBtn.addEventListener('click', () => {
+                openCurveModal(eq.id);
+              });
+              col3.appendChild(curveBtn);
+              // Calcular e mostrar a eficiência média anual e mensal se houver dados climáticos
+              const avgDiv = document.createElement('div');
+              avgDiv.className = 'mt-2 text-xs text-gray-600';
+              const avgStats = computeAverageEfficiencyStats(eq);
+              if (avgStats) {
+                const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+                const monthlyStr = avgStats.monthlyAvg.map((v,i) => monthNames[i] + ': ' + v.toFixed(2)).join(' | ');
+                avgDiv.innerHTML = `<strong>Ef. Média Anual:</strong> ${avgStats.annualAvg.toFixed(2)}<br/><strong>Ef. Médias Mensais:</strong> ${monthlyStr}`;
+              } else {
+                avgDiv.textContent = 'Importe ou gere dados climáticos para calcular eficiências médias.';
+              }
+              col3.appendChild(avgDiv);
+            }
+            grid.appendChild(col3);
+          } else {
+            // humidification/dehumidification: single efficiency
+            const col2 = document.createElement('div');
+            col2.className = 'space-y-4 p-4 border rounded-lg md:col-span-2';
+            const label = document.createElement('label');
+            label.className = 'block text-sm';
+            label.textContent = 'Eficiência (kWh/kg):';
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.step = '0.01';
+            input.value = eq.efficiency_kwh_per_kg;
+            input.className = 'w-full rounded-md border-gray-300';
+            // actualiza a eficiência em humidificação/desumidificação apenas quando o campo perde o foco
+            input.addEventListener('change', () => {
+              updateEquipment(eq.id, 'efficiency_kwh_per_kg', input.value);
+            });
+            col2.appendChild(label);
+            col2.appendChild(input);
+            grid.appendChild(col2);
+          }
+        } else {
+          const col = document.createElement('div');
+          col.className = 'p-4 border rounded-lg md:col-span-2 flex items-center justify-center bg-gray-50';
+          const p = document.createElement('p');
+          p.className = 'text-gray-500';
+          p.textContent = 'Nenhuma eficiência necessária.';
+          col.appendChild(p);
+          grid.appendChild(col);
+        }
+        div.appendChild(grid);
+        container.appendChild(div);
+      });
+    }
+
+    // Initialize with some default equipment as in original example
+    function initEquipmentDefaults() {
+      equipmentList = [
+        { id: generateUUID(), name: 'Ex: Resistência Elétrica', loadType: 'heating', type: 'electric', efficiency_mode: 'fixed', fixed_efficiency: 1.0, curve_a: 0, curve_b: 0, efficiency_kwh_per_kg: 0 },
+        { id: generateUUID(), name: 'Ex: Bomba de Calor (Arref.)', loadType: 'cooling', type: 'heat_pump', efficiency_mode: 'fixed', fixed_efficiency: 3.5, curve_a: 3.0, curve_b: 0.08, efficiency_kwh_per_kg: 0 },
+        { id: generateUUID(), name: 'Ex: Humidificador a Vapor', loadType: 'humidification', type: 'electric_steam', efficiency_mode: 'fixed', fixed_efficiency: 0, curve_a: 0, curve_b: 0, efficiency_kwh_per_kg: 0.75 },
+      ];
+      renderEquipmentList();
+      // Update simulation availability on load
+      updateSimulationInputs();
+    }
+    initEquipmentDefaults();
+
+    // Simulation Logic
+    function updateSimulationInputs() {
+      // Enable/disable sources
+      const loadSourceSelect = document.getElementById('sim-load-source');
+      if (thermalLoads) {
+        loadSourceSelect.disabled = false;
+        document.getElementById('sim-load-warning').classList.add('hidden');
+      } else {
+        loadSourceSelect.disabled = true;
+        document.getElementById('sim-load-warning').classList.remove('hidden');
+      }
+      const climateSourceSelect = document.getElementById('sim-climate-source');
+      climateSourceSelect.innerHTML = '';
+      if (climateData) {
+        const opt = document.createElement('option');
+        opt.value = 'imported';
+        opt.textContent = 'Clima Importado (Menu 2)';
+        climateSourceSelect.appendChild(opt);
+      }
+      if (generatedClimateData) {
+        const opt = document.createElement('option');
+        opt.value = 'generated';
+        opt.textContent = 'Clima Gerado (Menu 3)';
+        climateSourceSelect.appendChild(opt);
+      }
+      if (!climateData && !generatedClimateData) {
+        const opt = document.createElement('option');
+        opt.textContent = 'Nenhum dado climático disponível';
+        climateSourceSelect.appendChild(opt);
+        climateSourceSelect.disabled = true;
+        document.getElementById('sim-climate-warning').classList.remove('hidden');
+      } else {
+        climateSourceSelect.disabled = false;
+        document.getElementById('sim-climate-warning').classList.add('hidden');
+      }
+      // Enable run button
+      const runBtn = document.getElementById('run-simulation');
+      if (thermalLoads && (climateData || generatedClimateData)) runBtn.disabled = false; else runBtn.disabled = true;
+    }
+
+    document.getElementById('run-simulation').addEventListener('click', () => {
+      if (!thermalLoads) {
+        alert('Cargas térmicas não estão carregadas.');
+        return;
+      }
+      const climateSource = document.getElementById('sim-climate-source').value;
+      let climate = null;
+      if (climateSource === 'imported') climate = climateData ? climateData.data : null;
+      else if (climateSource === 'generated') climate = generatedClimateData ? generatedClimateData.data : null;
+      if (!climate) {
+        alert('Dados climáticos não estão carregados.');
+        return;
+      }
+      const results = [];
+      equipmentList.forEach(eq => {
+        if (eq.type === 'none') return;
+        let equipment_kWh = 0;
+        let waterLiters = 0;
+        for (let h = 0; h < 8760; h++) {
+          const t_ext = climate.temp[h];
+          if (eq.loadType === 'heating') {
+            const load = thermalLoads.data.heating[h];
+            if (load > 0) {
+              let eff = 1.0;
+              if (eq.efficiency_mode === 'fixed') eff = eq.fixed_efficiency; else eff = eq.curve_a + eq.curve_b * t_ext;
+              eff = Math.max(0.1, eff);
+              // consumo de energia para produzir carga térmica (kWh)
+              equipment_kWh += load / eff;
+            }
+          } else if (eq.loadType === 'cooling') {
+            const load = thermalLoads.data.cooling[h];
+            if (load > 0) {
+              let eff = 1.0;
+              if (eq.efficiency_mode === 'fixed') eff = eq.fixed_efficiency; else eff = eq.curve_a + eq.curve_b * t_ext;
+              eff = Math.max(0.1, eff);
+              equipment_kWh += load / eff;
+              // sistemas adiabáticos consomem água por kWh térmico
+              if (eq.type === 'adiabatic') {
+                waterLiters += load * eq.water_rate_l_per_kwh;
+              }
+            }
+          } else if (eq.loadType === 'humidification') {
+            const load = thermalLoads.data.humid[h];
+            if (load > 0) equipment_kWh += load * eq.efficiency_kwh_per_kg;
+          } else if (eq.loadType === 'dehumidification') {
+            const load = thermalLoads.data.dehumid[h];
+            if (load > 0) equipment_kWh += load * eq.efficiency_kwh_per_kg;
+          }
+        }
+        // diferenciar consumo elétrico e consumo de gás natural
+        let electric_kWh = 0;
+        let gas_kWh = 0;
+        if (eq.type === 'gas_boiler') {
+          // caldeira a gás: consumo de gás corresponde ao kWh calculado
+          gas_kWh = equipment_kWh;
+          electric_kWh = 0;
+        } else {
+          electric_kWh = equipment_kWh;
+          gas_kWh = 0;
+        }
+        // Traduzir tipo de equipamento para um rótulo mais legível
+        const typeLabels = {
+          'electric': 'Resistência Elétrica',
+          'gas_boiler': 'Caldeira a Gás',
+          'heat_pump': 'Bomba de Calor',
+          'chiller': 'Chiller',
+          'split': 'Split',
+          'vrf': 'VRF',
+          'adiabatic': 'Adiabático',
+          'electric_steam': 'Vapor Elétrico',
+          'fridge_cycle': 'Ciclo Frigorífico',
+          'none': 'Nenhum'
+        };
+        const equipmentLabel = typeLabels[eq.type] || eq.type;
+        // calcular pico e carga térmica anual (soma de carga)
+        let peak_kW = 0;
+        let totalLoad = 0;
+        if (eq.loadType === 'heating') {
+          peak_kW = computePeakPowerForEq(eq);
+          totalLoad = thermalLoads.data.heating.reduce((a, v) => a + (v > 0 ? v : 0), 0);
+        } else if (eq.loadType === 'cooling') {
+          peak_kW = computePeakPowerForEq(eq);
+          totalLoad = thermalLoads.data.cooling.reduce((a, v) => a + (v > 0 ? v : 0), 0);
+        } else if (eq.loadType === 'humidification') {
+          peak_kW = computePeakPowerForEq(eq);
+          totalLoad = thermalLoads.data.humid.reduce((a, v) => a + (v > 0 ? v : 0), 0);
+        } else if (eq.loadType === 'dehumidification') {
+          peak_kW = computePeakPowerForEq(eq);
+          totalLoad = thermalLoads.data.dehumid.reduce((a, v) => a + (v > 0 ? v : 0), 0);
+        }
+        results.push({ id: eq.id, equipmentName: eq.name, loadType: eq.loadType, equipmentType: equipmentLabel, peak_kW: peak_kW, thermal_kWh: totalLoad, electric_kWh: electric_kWh, gas_kWh: gas_kWh, water_liters: waterLiters });
+      });
+      // Display consumption results (energy and water)
+      const tbody = document.getElementById('simulation-results-body');
+      tbody.innerHTML = '';
+      results.forEach(res => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        const waterStr = res.water_liters && res.water_liters > 0 ? res.water_liters.toFixed(0) : '-';
+        const gasStr = res.gas_kWh && res.gas_kWh > 0 ? res.gas_kWh.toFixed(0) : '-';
+        const elecStr = res.electric_kWh && res.electric_kWh > 0 ? res.electric_kWh.toFixed(0) : '-';
+        const peakStr = res.peak_kW && res.peak_kW > 0 ? res.peak_kW.toFixed(2) : '-';
+        const thermalStr = res.thermal_kWh && res.thermal_kWh > 0 ? res.thermal_kWh.toFixed(0) : '-';
+        tr.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${res.equipmentName}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${res.loadType}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${res.equipmentType}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${peakStr}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${thermalStr}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${elecStr}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${gasStr}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${waterStr}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      // Não mostrar tabela de eficiências médias na simulação (transferido para configuração de equipamentos)
+      const effContainer = document.getElementById('efficiency-results-container');
+      effContainer.classList.add('hidden');
+      document.getElementById('simulation-results').classList.remove('hidden');
+      // Guardar resultados para uso na otimização
+      // Guardar resultados com o ID de cada equipamento
+      lastSimulationResults = results.map(r => {
+        return {
+          id: r.id,
+          equipmentName: r.equipmentName,
+          loadType: r.loadType,
+          equipmentType: r.equipmentType,
+          peak_kW: r.peak_kW || 0,
+          thermal_kWh: r.thermal_kWh || 0,
+          electric_kWh: r.electric_kWh || 0,
+          gas_kWh: r.gas_kWh || 0,
+          water_liters: r.water_liters || 0
+        };
+      });
+    });
+
+    // When data sources change, update simulation inputs
+    ['thermal-results','climate-results','gen-climate-results','equipment-list'].forEach(id => {
+      const el = document.getElementById(id);
+      // Mutation observer to update simulation inputs when relevant elements become visible or equipment list changes
+    });
+
+    // Simple event to update simulation inputs after processing/generating data
+    document.getElementById('thermal-results').addEventListener('transitionend', updateSimulationInputs);
+    document.getElementById('climate-results').addEventListener('transitionend', updateSimulationInputs);
+    document.getElementById('gen-climate-results').addEventListener('transitionend', updateSimulationInputs);
+    // Also update after clicking pages
+    document.getElementById('menu1').addEventListener('mouseenter', updateSimulationInputs);
+    document.getElementById('menu2').addEventListener('mouseenter', updateSimulationInputs);
+    document.getElementById('menu3').addEventListener('mouseenter', updateSimulationInputs);
+    document.getElementById('menu5').addEventListener('mouseenter', updateSimulationInputs);
+
+    // ---- Otimização: cálculo de investimento, custos e emissões ----
+    /**
+     * Calcula o pico de potência térmica para um equipamento a partir dos dados de carga.
+     * @param {Object} eq Equipamento
+     * @returns {number} pico de carga (kW ou kg/h)
+     */
+    function computePeakPowerForEq(eq) {
+      if (!thermalLoads || !thermalLoads.data) return 0;
+      let arr = [];
+      if (eq.loadType === 'heating') arr = thermalLoads.data.heating;
+      else if (eq.loadType === 'cooling') arr = thermalLoads.data.cooling;
+      else if (eq.loadType === 'humidification') arr = thermalLoads.data.humid;
+      else if (eq.loadType === 'dehumidification') arr = thermalLoads.data.dehumid;
+      if (!arr || arr.length === 0) return 0;
+      return Math.max(...arr);
+    }
+
+    /**
+     * Preenche a tabela de investimento para cada equipamento com base no pico de potência.
+     */
+    function updateInvestmentTable() {
+      const tbody = document.getElementById('investment-table-body');
+      tbody.innerHTML = '';
+      // se não houver cargas térmicas carregadas ou equipamentos, desativar botão
+      const runOptBtn = document.getElementById('run-optimization');
+      if (!equipmentList || equipmentList.length === 0 || !thermalLoads || !lastSimulationResults) {
+        runOptBtn.disabled = true;
+      } else {
+        runOptBtn.disabled = false;
+      }
+      optimizationData = {};
+      equipmentList.forEach(eq => {
+        if (eq.type === 'none') return;
+        const peak = computePeakPowerForEq(eq);
+        // valores padrão
+        const defaultGama = 'media';
+        const defaultInst = 'normal';
+        const baseCost = { baixa: 200, media: 350, alta: 500 };
+        const instFactor = { simples: 1.0, normal: 1.2, complexa: 1.4 };
+        const invEstimado = peak * baseCost[defaultGama] * instFactor[defaultInst];
+        optimizationData[eq.id] = { gama: defaultGama, instalacao: defaultInst, investment: invEstimado, peakPower: peak };
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        // Nome
+        const tdName = document.createElement('td');
+        tdName.className = 'px-4 py-2 text-sm text-gray-900';
+        tdName.textContent = eq.name;
+        tr.appendChild(tdName);
+        // Tipo de Carga
+        const tdLoad = document.createElement('td');
+        tdLoad.className = 'px-4 py-2 text-sm text-gray-700';
+        tdLoad.textContent = eq.loadType === 'heating' ? 'Aquecimento' : eq.loadType === 'cooling' ? 'Arrefecimento' : eq.loadType === 'humidification' ? 'Humidificação' : 'Desumidificação';
+        tr.appendChild(tdLoad);
+        // Tipo de Equipamento (rótulo legível)
+        const typeLabels = {
+          'electric': 'Resistência Elétrica',
+          'gas_boiler': 'Caldeira a Gás',
+          'heat_pump': 'Bomba de Calor',
+          'chiller': 'Chiller',
+          'split': 'Split',
+          'vrf': 'VRF',
+          'adiabatic': 'Adiabático',
+          'electric_steam': 'Vapor Elétrico',
+          'fridge_cycle': 'Ciclo Frigorífico',
+          'none': 'Nenhum'
+        };
+        const tdType = document.createElement('td');
+        tdType.className = 'px-4 py-2 text-sm text-gray-700';
+        tdType.textContent = typeLabels[eq.type] || eq.type;
+        tr.appendChild(tdType);
+        // Pico térmico
+        const tdPeak = document.createElement('td');
+        tdPeak.className = 'px-4 py-2 text-sm text-gray-700';
+        tdPeak.textContent = peak.toFixed(1);
+        tr.appendChild(tdPeak);
+        // Gama select
+        const tdGama = document.createElement('td');
+        tdGama.className = 'px-4 py-2 text-sm';
+        const selectG = document.createElement('select');
+        selectG.className = 'w-full rounded-md border-gray-300';
+        [ {v:'baixa',l:'Baixa'}, {v:'media',l:'Média'}, {v:'alta',l:'Alta'} ].forEach(opt => {
+          const o = document.createElement('option'); o.value = opt.v; o.textContent = opt.l; if (opt.v === defaultGama) o.selected = true; selectG.appendChild(o);
+        });
+        selectG.addEventListener('change', () => {
+          optimizationData[eq.id].gama = selectG.value;
+          // recalcular investimento
+          const gamaVal = selectG.value;
+          const instVal = optimizationData[eq.id].instalacao;
+          const inv = optimizationData[eq.id].peakPower * baseCost[gamaVal] * instFactor[instVal];
+          optimizationData[eq.id].investment = inv;
+          inputInv.value = inv.toFixed(0);
+        });
+        tdGama.appendChild(selectG);
+        tr.appendChild(tdGama);
+        // Instalação select
+        const tdInst = document.createElement('td');
+        tdInst.className = 'px-4 py-2 text-sm';
+        const selectI = document.createElement('select');
+        selectI.className = 'w-full rounded-md border-gray-300';
+        [ {v:'simples',l:'Simples'}, {v:'normal',l:'Normal'}, {v:'complexa',l:'Complexa'} ].forEach(opt => {
+          const o = document.createElement('option'); o.value = opt.v; o.textContent = opt.l; if (opt.v === defaultInst) o.selected = true; selectI.appendChild(o);
+        });
+        selectI.addEventListener('change', () => {
+          optimizationData[eq.id].instalacao = selectI.value;
+          const gamaVal = optimizationData[eq.id].gama;
+          const instVal = selectI.value;
+          const inv = optimizationData[eq.id].peakPower * baseCost[gamaVal] * instFactor[instVal];
+          optimizationData[eq.id].investment = inv;
+          inputInv.value = inv.toFixed(0);
+        });
+        tdInst.appendChild(selectI);
+        tr.appendChild(tdInst);
+        // Investimento input
+        const tdInv = document.createElement('td');
+        tdInv.className = 'px-4 py-2 text-sm';
+        const inputInv = document.createElement('input');
+        inputInv.type = 'number';
+        inputInv.step = '1';
+        inputInv.className = 'w-full rounded-md border-gray-300';
+        inputInv.value = invEstimado.toFixed(0);
+        inputInv.addEventListener('input', () => {
+          const val = parseFloat(inputInv.value) || 0;
+          optimizationData[eq.id].investment = val;
+        });
+        tdInv.appendChild(inputInv);
+        tr.appendChild(tdInv);
+        tbody.appendChild(tr);
+      });
+    }
+
+    /**
+     * Calcula custos e emissões com base nos resultados da simulação e nas opções de investimento.
+     */
+    function calculateOptimizationResults() {
+      const resultsBody = document.getElementById('optimization-results-body');
+      const resultsFooter = document.getElementById('optimization-results-footer');
+      resultsBody.innerHTML = '';
+      resultsFooter.innerHTML = '';
+      const optResContainer = document.getElementById('optimization-results');
+      if (!lastSimulationResults || lastSimulationResults.length === 0) {
+        alert('Por favor, execute a simulação primeiro (Menu 5).');
+        optResContainer.classList.add('hidden');
+        return;
+      }
+      // custos
+      const costElec = parseFloat(document.getElementById('opt-electric-cost').value) || 0;
+      const costGas = parseFloat(document.getElementById('opt-gas-cost').value) || 0;
+      const costWater = parseFloat(document.getElementById('opt-water-cost').value) || 0;
+      // factores CO2 (kg/kWh)
+      const CO2_ELEC = 0.295;
+      const CO2_GAS = 0.204;
+      // totais
+      let totalElec = 0, totalCostElec = 0, totalCO2Elec = 0;
+      let totalGas = 0, totalCostGas = 0, totalCO2Gas = 0;
+      let totalWater = 0, totalCostWater = 0;
+      let totalCost = 0, totalCO2 = 0;
+      let totalInvestment = 0;
+      lastSimulationResults.forEach(res => {
+        const invData = optimizationData[res.id] || { investment: 0 };
+        const consElec = res.electric_kWh || 0;
+        const consGas = res.gas_kWh || 0;
+        const consWater = res.water_liters || 0;
+        const costElecVal = consElec * costElec;
+        const costGasVal = consGas * costGas;
+        const costWaterVal = consWater * costWater;
+        const co2Elec = consElec * CO2_ELEC / 1000;
+        const co2Gas = consGas * CO2_GAS / 1000;
+        const totalCostEq = costElecVal + costGasVal + costWaterVal;
+        const totalCO2Eq = co2Elec + co2Gas;
+        totalElec += consElec;
+        totalCostElec += costElecVal;
+        totalCO2Elec += co2Elec;
+        totalGas += consGas;
+        totalCostGas += costGasVal;
+        totalCO2Gas += co2Gas;
+        totalWater += consWater;
+        totalCostWater += costWaterVal;
+        totalCost += totalCostEq;
+        totalCO2 += totalCO2Eq;
+        totalInvestment += invData.investment || 0;
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        // Prepara as células agrupando consumo, custo e emissões
+        const loadLabel = res.loadType === 'heating' ? 'Aquecimento' : res.loadType === 'cooling' ? 'Arrefecimento' : res.loadType === 'humidification' ? 'Humidificação' : 'Desumidificação';
+        const invVal = invData.investment || 0;
+        tr.innerHTML = `
+          <td class="px-4 py-2 text-sm text-gray-700">${loadLabel}</td>
+          <td class="px-4 py-2 text-sm text-gray-900">${res.equipmentName}</td>
+          <td class="px-4 py-2 text-sm text-gray-700">${res.equipmentType}</td>
+          <td class="px-4 py-2 text-sm text-gray-700 whitespace-pre-line">${consElec.toFixed(0)} kWh\n${costElecVal.toFixed(2)} €\n${co2Elec.toFixed(3)} ton CO₂</td>
+          <td class="px-4 py-2 text-sm text-gray-700 whitespace-pre-line">${consGas.toFixed(0)} kWh\n${costGasVal.toFixed(2)} €\n${co2Gas.toFixed(3)} ton CO₂</td>
+          <td class="px-4 py-2 text-sm text-gray-700 whitespace-pre-line">${consWater.toFixed(0)} L\n${costWaterVal.toFixed(2)} €</td>
+          <td class="px-4 py-2 text-sm text-gray-900 font-semibold whitespace-pre-line">${totalCostEq.toFixed(2)} €\n${totalCO2Eq.toFixed(3)} ton CO₂</td>
+          <td class="px-4 py-2 text-sm text-gray-900 font-semibold">${invVal.toFixed(0)}</td>
+        `;
+        resultsBody.appendChild(tr);
+      });
+      // linha total
+      // Não adicionar linha de totais à tabela, conforme solicitado
+      optResContainer.classList.remove('hidden');
+    }
+    // Associar botão de otimização ao cálculo
+    document.getElementById('run-optimization').addEventListener('click', calculateOptimizationResults);
+
+    // ---- Funções para cálculo de eficiência média e visualização de curvas ----
+    let curveChartInstance = null;
+    /**
+     * Calcula a eficiência média anual e mensal para um equipamento em modo curva.
+     * Retorna null se não houver dados climáticos disponíveis.
+     * @param {Object} eq Equipamento (com curve_a e curve_b definidos)
+     */
+    function computeAverageEfficiencyStats(eq) {
+      // Seleciona os dados climáticos disponíveis (importados ou gerados)
+      const climate = climateData ? (climateData.data) : (generatedClimateData ? generatedClimateData.data : null);
+      if (!climate) return null;
+      if (!eq || eq.efficiency_mode !== 'curve') return null;
+      const temps = climate.temp;
+      const hoursInMonth = [744,672,744,720,744,720,744,744,720,744,720,744];
+      let hourIndex = 0;
+      let sumEff = 0;
+      let countEff = 0;
+      const monthlySum = new Array(12).fill(0);
+      const monthlyCount = new Array(12).fill(0);
+      for (let m = 0; m < 12; m++) {
+        for (let h = 0; h < hoursInMonth[m]; h++) {
+          const t = temps[hourIndex];
+          let eff = eq.curve_a + eq.curve_b * t;
+          eff = Math.max(0.1, eff);
+          sumEff += eff;
+          countEff++;
+          monthlySum[m] += eff;
+          monthlyCount[m]++;
+          hourIndex++;
+        }
+      }
+      const annualAvg = countEff > 0 ? sumEff / countEff : 0;
+      const monthlyAvg = monthlySum.map((s,i) => monthlyCount[i] > 0 ? s / monthlyCount[i] : 0);
+      return { annualAvg, monthlyAvg };
+    }
+
+    /**
+     * Abre o modal de curva de eficiência para um equipamento específico.
+     * Mostra um gráfico da função de eficiência vs temperatura exterior e as eficiências médias.
+     * @param {string} eqId Identificador do equipamento
+     */
+    function openCurveModal(eqId) {
+      const eq = equipmentList.find(e => e.id === eqId);
+      if (!eq) return;
+      const modal = document.getElementById('curve-modal');
+      const chartCanvas = document.getElementById('curveChart');
+      const infoDiv = document.getElementById('curve-modal-info');
+      const titleEl = document.getElementById('curve-modal-title');
+      titleEl.textContent = `Curva de Eficiência – ${eq.name}`;
+      // Verificar se existem dados climáticos
+      const climate = climateData ? (climateData.data) : (generatedClimateData ? generatedClimateData.data : null);
+      if (!climate) {
+        // Sem dados climáticos
+        infoDiv.textContent = 'Não há dados climáticos. Importe ou gere clima no Menu 2 ou 3.';
+        // Destruir gráfico anterior se existir
+        if (curveChartInstance) {
+          curveChartInstance.destroy();
+          curveChartInstance = null;
+        }
+      } else {
+        // Determinar intervalo de temperaturas exterior
+        const temps = climate.temp;
+        const minT = Math.min(...temps);
+        const maxT = Math.max(...temps);
+        const points = 30;
+        const xVals = [];
+        const yVals = [];
+        const step = (maxT - minT) / (points - 1);
+        for (let i = 0; i < points; i++) {
+          const t = minT + step * i;
+          let eff = eq.curve_a + eq.curve_b * t;
+          eff = Math.max(0.1, eff);
+          xVals.push(parseFloat(t.toFixed(1)));
+          yVals.push(parseFloat(eff.toFixed(2)));
+        }
+        // Destruir gráfico existente
+        if (curveChartInstance) {
+          curveChartInstance.destroy();
+        }
+        const ctx = chartCanvas.getContext('2d');
+        curveChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: xVals,
+            datasets: [
+              {
+                label: 'Eficiência',
+                data: yVals,
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                tension: 0.2
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: 'Temperatura Exterior (°C)'
+                }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'Eficiência (COP/EER)'
+                },
+                beginAtZero: false
+              }
+            }
+          }
+        });
+        // Calcular eficiências médias para informação adicional
+        const avgStats = computeAverageEfficiencyStats(eq);
+        if (avgStats) {
+          const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+          const monthlyStr = avgStats.monthlyAvg.map((v,i) => monthNames[i] + ': ' + v.toFixed(2)).join(' | ');
+          infoDiv.innerHTML = `<p><strong>Eficiência Média Anual:</strong> ${avgStats.annualAvg.toFixed(2)}</p><p><strong>Eficiências Médias Mensais:</strong> ${monthlyStr}</p>`;
+        } else {
+          infoDiv.textContent = '';
+        }
+      }
+      modal.classList.remove('hidden');
+    }
+    // Fechar modal ao clicar no botão de fechar
+    document.getElementById('curve-modal-close').addEventListener('click', () => {
+      document.getElementById('curve-modal').classList.add('hidden');
+    });
+
+    // ---- Funções de análise de cenários ----
+    // Variáveis globais para armazenar métricas e rótulos de cada cenário
+    let scenarioMetrics = [];
+    let scenarioLabels = [];
+let scenarioEquipmentList = [];
+// Dados do cenário base (manual)
+let baseScenarioMetrics = null;
+let baseScenarioEquipMap = null;
+
+    /**
+     * Calcula todos os cenários possíveis (combinações de um equipamento por tipo de carga)
+     * e actualiza o gráfico e a lista de selecção de cenários. Requer que
+     * lastSimulationResults e optimizationData estejam preenchidos (simulação e otimização realizadas).
+     */
+    function updateScenarioAnalysis() {
+      const detailsDiv = document.getElementById('scenario-details');
+      const selectEl = document.getElementById('scenario-select');
+      if (!lastSimulationResults || lastSimulationResults.length === 0) {
+        // sem simulação
+        if (selectEl) selectEl.innerHTML = '';
+        if (detailsDiv) detailsDiv.innerHTML = '<p class="text-sm text-red-500">Execute a simulação (Menu 5) e a otimização (Menu 6) antes de analisar cenários.</p>';
+        return;
+      }
+      // Agrupar resultados por tipo de carga
+      const groups = {};
+      lastSimulationResults.forEach(res => {
+        if (!groups[res.loadType]) groups[res.loadType] = [];
+        groups[res.loadType].push(res);
+      });
+      const loadTypes = Object.keys(groups);
+      if (loadTypes.length === 0) {
+        if (selectEl) selectEl.innerHTML = '';
+        if (detailsDiv) detailsDiv.innerHTML = '<p class="text-sm text-red-500">Nenhum equipamento para analisar.</p>';
+        return;
+      }
+      // Obter custos e factores de emissões
+      const costElec = parseFloat(document.getElementById('opt-electric-cost').value) || 0;
+      const costGas = parseFloat(document.getElementById('opt-gas-cost').value) || 0;
+      const costWater = parseFloat(document.getElementById('opt-water-cost').value) || 0;
+      const CO2_ELEC = 0.295;
+      const CO2_GAS = 0.204;
+      // Construir combinações (produto cartesiano)
+      const scenarios = [];
+      function buildScenarios(idx, current) {
+        if (idx === loadTypes.length) {
+          scenarios.push(current.slice());
+          return;
+        }
+        const lt = loadTypes[idx];
+        groups[lt].forEach(item => {
+          current.push(item);
+          buildScenarios(idx + 1, current);
+          current.pop();
+        });
+      }
+      buildScenarios(0, []);
+      // Calcular métricas e lista de equipamentos para cada cenário
+      scenarioMetrics = [];
+      scenarioLabels = [];
+      scenarioEquipmentList = [];
+      scenarios.forEach((scenario, index) => {
+        const label = 'Cenário ' + (index + 1);
+        let inv = 0;
+        let consElec = 0;
+        let consGas = 0;
+        let consWater = 0;
+        const equipMap = {};
+        scenario.forEach(item => {
+          // mapear equipamento por tipo de carga
+          equipMap[item.loadType] = item;
+          const id = item.id;
+          const opt = optimizationData[id] || { investment: 0 };
+          inv += opt.investment || 0;
+          consElec += item.electric_kWh || 0;
+          consGas += item.gas_kWh || 0;
+          consWater += item.water_liters || 0;
+        });
+        const cost = consElec * costElec + consGas * costGas + consWater * costWater;
+        const co2 = (consElec * CO2_ELEC + consGas * CO2_GAS) / 1000;
+        const totalEnergy = consElec + consGas;
+        const waterM3 = consWater / 1000;
+        scenarioLabels.push(label);
+        scenarioMetrics.push({ inv: inv, cost: cost, co2: co2, energy: totalEnergy, water: waterM3 });
+        scenarioEquipmentList.push(equipMap);
+      });
+      // Renderizar select
+      if (selectEl) {
+        // remover event listener anterior para evitar acumulação
+        selectEl.replaceChildren();
+        scenarioLabels.forEach((lbl, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          opt.textContent = lbl;
+          selectEl.appendChild(opt);
+        });
+        selectEl.onchange = (e) => {
+          const idx = parseInt(e.target.value, 10);
+          showScenarioDetails(idx);
+        };
+      }
+      // Construir dados para gráfico
+      const invData = scenarioMetrics.map(m => m.inv);
+      const costData = scenarioMetrics.map(m => m.cost);
+      const co2Data = scenarioMetrics.map(m => m.co2);
+      const energyData = scenarioMetrics.map(m => m.energy);
+      const waterData = scenarioMetrics.map(m => m.water);
+      const ctx = document.getElementById('scenarioChart').getContext('2d');
+      if (chartInstances.scenarioChart) {
+        chartInstances.scenarioChart.destroy();
+        delete chartInstances.scenarioChart;
+      }
+      chartInstances.scenarioChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: scenarioLabels,
+          datasets: [
+            { label: 'Investimento (€)', data: invData, borderColor: 'blue', backgroundColor: 'rgba(59,130,246,0.2)', yAxisID: 'y1', tension: 0.2 },
+            { label: 'Custo (€)', data: costData, borderColor: 'green', backgroundColor: 'rgba(34,197,94,0.2)', yAxisID: 'y2', tension: 0.2 },
+            { label: 'Ton CO₂', data: co2Data, borderColor: 'red', backgroundColor: 'rgba(239,68,68,0.2)', yAxisID: 'y3', tension: 0.2 },
+            { label: 'Consumo (kWh)', data: energyData, borderColor: 'orange', backgroundColor: 'rgba(249,115,22,0.2)', yAxisID: 'y4', tension: 0.2 },
+            { label: 'Água (m³)', data: waterData, borderColor: 'purple', backgroundColor: 'rgba(168,85,247,0.2)', yAxisID: 'y5', tension: 0.2 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'nearest', intersect: false },
+          scales: {
+            y1: { type: 'linear', position: 'left', title: { display: true, text: 'Investimento (€)' }, beginAtZero: true },
+            y2: { type: 'linear', position: 'left', title: { display: true, text: 'Custo (€)' }, beginAtZero: true, grid: { drawOnChartArea: false } },
+            y3: { type: 'linear', position: 'right', title: { display: true, text: 'Ton CO₂' }, beginAtZero: true, grid: { drawOnChartArea: false } },
+            y4: { type: 'linear', position: 'right', title: { display: true, text: 'Consumo (kWh)' }, beginAtZero: true, grid: { drawOnChartArea: false } },
+            y5: { type: 'linear', position: 'right', title: { display: true, text: 'Água (m³)' }, beginAtZero: true, grid: { drawOnChartArea: false } }
+          },
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+      // Mostrar detalhes do primeiro cenário
+      if (scenarioMetrics.length > 0) {
+        showScenarioDetails(0);
+      } else if (detailsDiv) {
+        detailsDiv.innerHTML = '<p class="text-sm text-gray-600">Nenhum cenário disponível.</p>';
+      }
+
+      // Construir tabela de cenários com equipamentos
+      const tableContainer = document.getElementById('scenario-table-container');
+      const tbody = document.getElementById('scenario-table-body');
+      if (tableContainer && tbody) {
+        if (scenarioEquipmentList.length > 0) {
+          tableContainer.classList.remove('hidden');
+          tbody.innerHTML = '';
+          // determinar a ordem dos tipos de carga a exibir nas colunas
+          const columnOrder = ['heating','cooling','humidification','dehumidification'];
+          scenarioEquipmentList.forEach((equipMap, idx) => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50 cursor-pointer';
+            let rowHtml = `<td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">Cenário ${idx + 1}</td>`;
+            columnOrder.forEach(loadTypeKey => {
+              const item = equipMap[loadTypeKey];
+              const name = item ? item.equipmentName : '-';
+              rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${name}</td>`;
+            });
+            // adicionar colunas de custo, CO2, investimento e indicadores financeiros
+            const m = scenarioMetrics[idx];
+            const costStr = m ? m.cost.toFixed(2) : '-';
+            const co2Str = m ? m.co2.toFixed(3) : '-';
+            const invStr = m ? m.inv.toFixed(0) : '-';
+            // calcular ROI, VAL e TIR em relação ao cenário base
+            let roiStr = '-';
+            let valStr = '-';
+            let tirStr = '-';
+            if (typeof baseScenarioMetrics !== 'undefined' && baseScenarioMetrics && m) {
+              const investDiff = m.inv - baseScenarioMetrics.inv;
+              const savings = baseScenarioMetrics.cost - m.cost;
+              // ROI: (OPEX base - OPEX cenário) / investimento do cenário
+              if (m.inv > 0) {
+                const roi = (savings / m.inv) * 100;
+                roiStr = roi.toFixed(1);
+              }
+              // NPV (VAL) using 10 years, 5%
+              const years = 10;
+              const rate = 0.05;
+              const val = -investDiff + savings * (1 - Math.pow(1 + rate, -years)) / rate;
+              valStr = val.toFixed(0);
+              // IRR (TIR) by bisection if savings != 0
+              if (savings !== 0) {
+                let low = -0.99;
+                let high = 1.0;
+                for (let i = 0; i < 50; i++) {
+                  const mid = (low + high) / 2;
+                  const f = -investDiff + savings * (1 - Math.pow(1 + mid, -years)) / mid;
+                  if (isNaN(f)) break;
+                  if (f > 0) low = mid; else high = mid;
+                }
+                const tir = ((low + high) / 2) * 100;
+                tirStr = tir.toFixed(1);
+              }
+            }
+            rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${costStr}</td>`;
+            rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${co2Str}</td>`;
+            rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${invStr}</td>`;
+            rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${roiStr}</td>`;
+            rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${valStr}</td>`;
+            rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${tirStr}</td>`;
+            tr.innerHTML = rowHtml;
+            tr.addEventListener('click', () => {
+              // actualizar select e detalhes ao clicar na linha
+              const selectEl = document.getElementById('scenario-select');
+              if (selectEl) selectEl.value = idx;
+              showScenarioDetails(idx);
+              // destacar linha seleccionada
+              const rows = tbody.querySelectorAll('tr');
+              rows.forEach(r => r.classList.remove('bg-green-100'));
+              tr.classList.add('bg-green-100');
+            });
+            tbody.appendChild(tr);
+          });
+          // destacar primeira linha por defeito
+          const firstRow = tbody.querySelector('tr');
+          if (firstRow) firstRow.classList.add('bg-green-100');
+        } else {
+          tableContainer.classList.add('hidden');
+        }
+      }
+
+      // Actualizar selects do cenário base
+      populateBaseScenarioSelects(groups);
+      // Actualizar opções de comparativo se já existirem métricas
+      updateComparativoOptions();
+    }
+
+    /**
+     * Mostra os detalhes de um cenário seleccionado, exibindo investimento, custo total,
+     * emissões de CO₂, consumo de energia e consumo de água.
+     * @param {number} index Índice do cenário na lista
+     */
+    function showScenarioDetails(index) {
+      const detailsDiv = document.getElementById('scenario-details');
+      if (!scenarioMetrics || index === undefined || index < 0 || index >= scenarioMetrics.length) {
+        if (detailsDiv) detailsDiv.innerHTML = '';
+        return;
+      }
+      const m = scenarioMetrics[index];
+      // Construir HTML de métricas
+      let html = `\n        <table class="min-w-full text-sm text-gray-700">\n          <tbody>\n            <tr><th class="pr-2 text-left">Investimento:</th><td>${m.inv.toFixed(0)} €</td></tr>\n            <tr><th class="pr-2 text-left">Custo total:</th><td>${m.cost.toFixed(2)} €</td></tr>\n            <tr><th class="pr-2 text-left">Ton CO₂:</th><td>${m.co2.toFixed(3)}</td></tr>\n            <tr><th class="pr-2 text-left">Consumo de energia:</th><td>${m.energy.toFixed(0)} kWh</td></tr>\n            <tr><th class="pr-2 text-left">Consumo de água:</th><td>${m.water.toFixed(3)} m³</td></tr>\n          </tbody>\n        </table>\n      `;
+      // Adicionar lista de equipamentos seleccionados para o cenário
+      if (typeof scenarioEquipmentList !== 'undefined' && scenarioEquipmentList[index]) {
+        const equipMap = scenarioEquipmentList[index];
+        const labelsPT = { 'heating': 'Aquecimento', 'cooling': 'Arrefecimento', 'humidification': 'Humidificação', 'dehumidification': 'Desumidificação' };
+        html += '<h4 class="mt-4 mb-1 font-semibold text-sm text-gray-800">Equipamentos seleccionados:</h4>';
+        html += '<ul class="list-disc list-inside text-sm text-gray-700">';
+        ['heating','cooling','humidification','dehumidification'].forEach(key => {
+          const item = equipMap[key];
+          if (item) {
+            html += `<li>${labelsPT[key]}: ${item.equipmentName} (${item.equipmentType})</li>`;
+          }
+        });
+        html += '</ul>';
+      }
+      if (detailsDiv) detailsDiv.innerHTML = html;
+    }
+
+    /**
+     * Popula os selects para configuração do cenário base com os equipamentos disponíveis
+     * por tipo de carga. Permite que o utilizador seleccione manualmente o cenário 0.
+     * @param {Object} groups - objecto com listas de equipamentos por loadType
+     */
+    function populateBaseScenarioSelects(groups) {
+      const configDiv = document.getElementById('base-scenario-config');
+      const selectsDiv = document.getElementById('base-scenario-selects');
+      const updateBtn = document.getElementById('update-base-scenario');
+      const summaryDiv = document.getElementById('base-scenario-summary');
+      if (!groups || !selectsDiv || !configDiv) return;
+      const loadTypes = Object.keys(groups);
+      if (loadTypes.length === 0) {
+        configDiv.classList.add('hidden');
+        return;
+      }
+      // Mostrar o painel de configuração
+      configDiv.classList.remove('hidden');
+      // limpar selects
+      selectsDiv.innerHTML = '';
+      // Ordem para exibir select
+      const order = ['heating','cooling','humidification','dehumidification'];
+      const labelsPT = { 'heating': 'Aquecimento', 'cooling': 'Arrefecimento', 'humidification': 'Humidificação', 'dehumidification': 'Desumidificação' };
+      order.forEach(loadTypeKey => {
+        if (!groups[loadTypeKey]) return;
+        const wrapper = document.createElement('div');
+        const label = document.createElement('label');
+        label.className = 'block text-sm font-medium text-gray-700';
+        label.textContent = labelsPT[loadTypeKey] || loadTypeKey;
+        const select = document.createElement('select');
+        select.className = 'mt-1 w-full rounded-md border-gray-300';
+        select.dataset.loadType = loadTypeKey;
+        // preencher opções
+        groups[loadTypeKey].forEach((item, idx) => {
+          const opt = document.createElement('option');
+          opt.value = item.id;
+          opt.textContent = item.equipmentName;
+          select.appendChild(opt);
+        });
+        wrapper.appendChild(label);
+        wrapper.appendChild(select);
+        selectsDiv.appendChild(wrapper);
+      });
+      // actualizar base scenario quando carregar no botão
+      if (updateBtn) {
+        updateBtn.onclick = () => {
+          // obter selecções
+          const chosen = {};
+          const selects = selectsDiv.querySelectorAll('select');
+          selects.forEach(sel => {
+            const lt = sel.dataset.loadType;
+            const id = sel.value;
+            // procurar item correspondente nos resultados da simulação
+            const item = lastSimulationResults.find(r => r.id == id);
+            if (item) chosen[lt] = item;
+          });
+          // Calcular métricas do cenário base
+          let inv = 0;
+          let consElec = 0;
+          let consGas = 0;
+          let consWater = 0;
+          Object.keys(chosen).forEach(lt => {
+            const item = chosen[lt];
+            const id = item.id;
+            // investimento
+            const opt = optimizationData[id] || { investment: 0 };
+            inv += opt.investment || 0;
+            consElec += item.electric_kWh || 0;
+            consGas += item.gas_kWh || 0;
+            consWater += item.water_liters || 0;
+          });
+          // custos e emissões
+          const costElec = parseFloat(document.getElementById('opt-electric-cost').value) || 0;
+          const costGas = parseFloat(document.getElementById('opt-gas-cost').value) || 0;
+          const costWater = parseFloat(document.getElementById('opt-water-cost').value) || 0;
+          const CO2_ELEC = 0.295;
+          const CO2_GAS = 0.204;
+          const cost = consElec * costElec + consGas * costGas + consWater * costWater;
+          const co2 = (consElec * CO2_ELEC + consGas * CO2_GAS) / 1000;
+          const totalEnergy = consElec + consGas;
+          const waterM3 = consWater / 1000;
+          baseScenarioMetrics = { inv, cost, co2, energy: totalEnergy, water: waterM3 };
+          baseScenarioEquipMap = chosen;
+          // Actualizar resumo
+          if (summaryDiv) {
+            summaryDiv.innerHTML = `Investimento: ${inv.toFixed(0)} € | Custo: ${cost.toFixed(2)} € | Ton CO₂: ${co2.toFixed(3)} | Consumo energia: ${totalEnergy.toFixed(0)} kWh | Água: ${waterM3.toFixed(3)} m³`;
+          }
+          // Actualizar comparativo options
+          updateComparativoOptions();
+        };
+      }
+    }
+
+    /**
+     * Actualiza as opções disponíveis nas listas de comparação (comparativo).
+     * Inclui o cenário base manual (se existir) e todos os cenários gerados.
+     */
+    function updateComparativoOptions() {
+      const baseSelect = document.getElementById('compare-base');
+      const optSelect = document.getElementById('compare-opt');
+      if (!baseSelect || !optSelect) return;
+      baseSelect.innerHTML = '';
+      optSelect.innerHTML = '';
+      // Adicionar cenário base manual, se existir
+      if (baseScenarioMetrics) {
+        const optBase = document.createElement('option');
+        optBase.value = 'base';
+        optBase.textContent = 'Base (manual)';
+        baseSelect.appendChild(optBase.cloneNode(true));
+        optSelect.appendChild(optBase);
+      }
+      // Adicionar cenários gerados
+      scenarioLabels.forEach((lbl, idx) => {
+        const opt1 = document.createElement('option');
+        opt1.value = idx.toString();
+        opt1.textContent = lbl;
+        baseSelect.appendChild(opt1.cloneNode(true));
+        optSelect.appendChild(opt1);
+      });
+    }
+
+    /**
+     * Calcula e mostra o comparativo entre dois cenários seleccionados.
+     */
+    function runComparison() {
+      const baseSel = document.getElementById('compare-base');
+      const optSel = document.getElementById('compare-opt');
+      const tbody = document.getElementById('comparison-table-body');
+      const resultsDiv = document.getElementById('comparison-results');
+      if (!baseSel || !optSel || !tbody) return;
+      const baseVal = baseSel.value;
+      const optVal = optSel.value;
+      let mBase = null;
+      let mOpt = null;
+      if (baseVal === 'base') mBase = baseScenarioMetrics;
+      else {
+        const idx = parseInt(baseVal, 10);
+        mBase = scenarioMetrics[idx];
+      }
+      if (optVal === 'base') mOpt = baseScenarioMetrics;
+      else {
+        const idx2 = parseInt(optVal, 10);
+        mOpt = scenarioMetrics[idx2];
+      }
+      if (!mBase || !mOpt) {
+        resultsDiv.classList.add('hidden');
+        return;
+      }
+      // construir tabela comparativa
+      tbody.innerHTML = '';
+      // métricas
+      const metrics = [
+        { key: 'inv', label: 'Investimento (€)' },
+        { key: 'cost', label: 'OPEX (€/ano)' },
+        { key: 'co2', label: 'Ton CO₂' },
+        { key: 'energy', label: 'Consumo de energia (kWh)' },
+        { key: 'water', label: 'Consumo de água (m³)' }
+      ];
+      metrics.forEach(metric => {
+        const tr = document.createElement('tr');
+        const diff = mOpt[metric.key] - mBase[metric.key];
+        tr.innerHTML = `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 font-medium">${metric.label}</td>` +
+          `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${mBase[metric.key].toFixed(2)}</td>` +
+          `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${mOpt[metric.key].toFixed(2)}</td>` +
+          `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${diff.toFixed(2)}</td>`;
+        tbody.appendChild(tr);
+      });
+      // ROI (Retorno sobre investimento) = (OPEX base - OPEX opt) / CAPEX opt
+      let roi = null;
+      if (mOpt.inv > 0) {
+        roi = ((mBase.cost - mOpt.cost) / mOpt.inv) * 100;
+      }
+      const roiTr = document.createElement('tr');
+      roiTr.innerHTML = `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 font-medium">ROI (%)</td>` +
+        `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">-</td>` +
+        `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">-</td>` +
+        `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${roi !== null ? roi.toFixed(1) + '%' : '-'}</td>`;
+      tbody.appendChild(roiTr);
+      // Valor Actual Líquido (VAL) e Taxa Interna de Retorno (TIR)
+      // dif de investimento e poupança anual
+      const investDiff = mOpt.inv - mBase.inv;
+      const savings = mBase.cost - mOpt.cost;
+      const years = 10;
+      const rate = 0.05;
+      let val = null;
+      let tir = null;
+      if (years > 0 && rate > -1) {
+        // NPV formula: -investDiff + savings * (1 - (1+rate)^-years) / rate
+        val = -investDiff + savings * (1 - Math.pow(1 + rate, -years)) / rate;
+        // Compute IRR via bisection if savings != 0
+        if (savings !== 0) {
+          let low = -0.99;
+          let high = 1.0;
+          for (let i = 0; i < 50; i++) {
+            const mid = (low + high) / 2;
+            const f = -investDiff + savings * (1 - Math.pow(1 + mid, -years)) / mid;
+            if (isNaN(f)) break;
+            if (f > 0) low = mid; else high = mid;
+          }
+          tir = ((low + high) / 2) * 100;
+        }
+      }
+      const valTr = document.createElement('tr');
+      valTr.innerHTML = `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 font-medium">VAL (10a, 5%)</td>` +
+        `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">-</td>` +
+        `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">-</td>` +
+        `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${val !== null ? val.toFixed(0) : '-'}</td>`;
+      tbody.appendChild(valTr);
+      const tirTr = document.createElement('tr');
+      tirTr.innerHTML = `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 font-medium">TIR (%)</td>` +
+        `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">-</td>` +
+        `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">-</td>` +
+        `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${tir !== null ? tir.toFixed(1) + '%' : '-'}</td>`;
+      tbody.appendChild(tirTr);
+      // mostrar a secção de resultados
+      resultsDiv.classList.remove('hidden');
+      // Equipamentos associados a cada cenário
+      const equipDiv = document.getElementById('comparison-equipments');
+      if (equipDiv) {
+        let htmlEquip = '';
+        // Base equipments
+        htmlEquip += '<h4 class="font-semibold mb-1">Equipamentos – Base</h4>';
+        htmlEquip += '<ul class="list-disc list-inside text-sm text-gray-700 mb-2">';
+        if (baseVal === 'base') {
+          if (baseScenarioEquipMap) {
+            const labelsPT = { 'heating': 'Aquecimento', 'cooling': 'Arrefecimento', 'humidification': 'Humidificação', 'dehumidification': 'Desumidificação' };
+            Object.keys(baseScenarioEquipMap).forEach(key => {
+              const item = baseScenarioEquipMap[key];
+              htmlEquip += `<li>${labelsPT[key]}: ${item.equipmentName} (${item.equipmentType})</li>`;
+            });
+          } else {
+            htmlEquip += '<li>–</li>';
+          }
+        } else {
+          const idx = parseInt(baseVal, 10);
+          const equipMap = scenarioEquipmentList[idx];
+          const labelsPT = { 'heating': 'Aquecimento', 'cooling': 'Arrefecimento', 'humidification': 'Humidificação', 'dehumidification': 'Desumidificação' };
+          ['heating','cooling','humidification','dehumidification'].forEach(key => {
+            const item = equipMap ? equipMap[key] : null;
+            if (item) {
+              htmlEquip += `<li>${labelsPT[key]}: ${item.equipmentName} (${item.equipmentType})</li>`;
+            }
+          });
+        }
+        htmlEquip += '</ul>';
+        // Opt equipments
+        htmlEquip += '<h4 class="font-semibold mb-1">Equipamentos – Optimizado</h4>';
+        htmlEquip += '<ul class="list-disc list-inside text-sm text-gray-700">';
+        if (optVal === 'base') {
+          if (baseScenarioEquipMap) {
+            const labelsPT = { 'heating': 'Aquecimento', 'cooling': 'Arrefecimento', 'humidification': 'Humidificação', 'dehumidification': 'Desumidificação' };
+            Object.keys(baseScenarioEquipMap).forEach(key => {
+              const item = baseScenarioEquipMap[key];
+              htmlEquip += `<li>${labelsPT[key]}: ${item.equipmentName} (${item.equipmentType})</li>`;
+            });
+          } else {
+            htmlEquip += '<li>–</li>';
+          }
+        } else {
+          const idx2 = parseInt(optVal, 10);
+          const equipMap2 = scenarioEquipmentList[idx2];
+          const labelsPT = { 'heating': 'Aquecimento', 'cooling': 'Arrefecimento', 'humidification': 'Humidificação', 'dehumidification': 'Desumidificação' };
+          ['heating','cooling','humidification','dehumidification'].forEach(key => {
+            const item = equipMap2 ? equipMap2[key] : null;
+            if (item) {
+              htmlEquip += `<li>${labelsPT[key]}: ${item.equipmentName} (${item.equipmentType})</li>`;
+            }
+          });
+        }
+        htmlEquip += '</ul>';
+        equipDiv.innerHTML = htmlEquip;
+      }
+      // construir gráfico comparativo
+      const ctx = document.getElementById('comparisonChart').getContext('2d');
+      if (chartInstances.comparisonChart) {
+        chartInstances.comparisonChart.destroy();
+        delete chartInstances.comparisonChart;
+      }
+      chartInstances.comparisonChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: metrics.map(m => m.label),
+          datasets: [
+            { label: 'Base', data: metrics.map(m => mBase[m.key]), backgroundColor: 'rgba(59,130,246,0.5)' },
+            { label: 'Optimizado', data: metrics.map(m => mOpt[m.key]), backgroundColor: 'rgba(34,197,94,0.5)' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, title: { display: true, text: 'Valor' } } },
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
