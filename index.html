@@ -8,12 +8,23 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Print styles to ensure only the relatório is printed -->
+  <style>
+    @media print {
+      /* Hide everything except the report content */
+      body * { visibility: hidden; }
+      #report-content, #report-content * { visibility: visible; }
+      #report-content { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  </style>
 </head>
 <body class="h-screen w-screen font-sans bg-gray-100">
   <!-- Cover Screen -->
   <div id="cover-screen" class="flex flex-col items-center justify-center h-full w-full bg-gray-900 text-white p-8">
-    <h1 class="text-5xl font-bold text-blue-400 mb-4">Simulador de Consumos Energéticos</h1>
-    <p class="text-2xl text-gray-300 mb-8" id="project-name">(Nome do Projeto TBD)</p>
+    <!-- Logo and Title -->
+    <img src="e7a7709a-edce-435b-af3c-d5c4bc059926.png" alt="K‑Meter logo" class="w-48 mb-4" />
+    <h1 class="text-5xl font-bold text-blue-200 mb-2">K‑METER</h1>
+    <p class="text-lg text-gray-400 mb-8">Simulador de Consumos Energéticos</p>
     <div class="text-gray-400 space-y-2 text-center">
       <p>Versão: 1.0.0</p>
       <p id="today-date"></p>
@@ -883,12 +894,15 @@
       container.innerHTML = '';
       // Helper para criar secção
       function section(title, html) {
+        // Creates a section of the report. If title is an empty string, no heading will be shown.
         const div = document.createElement('div');
         div.className = 'report-section';
-        const h = document.createElement('h2');
-        h.className = 'text-2xl font-semibold mb-2';
-        h.textContent = title;
-        div.appendChild(h);
+        if (title && title.trim().length > 0) {
+          const h = document.createElement('h2');
+          h.className = 'text-2xl font-semibold mb-2';
+          h.textContent = title;
+          div.appendChild(h);
+        }
         if (typeof html === 'string') {
           const p = document.createElement('div');
           p.innerHTML = html;
@@ -901,9 +915,29 @@
       // Format date
       const dateStr = new Date().toLocaleDateString('pt-PT');
       // Capa
-      section('Capa', `<p class="text-lg">Relatório de Consumos Energéticos</p><p>Data: ${dateStr}</p><p>Autor: Koelho2000</p>`);
-      // Página em branco
-      section('Página em branco', '<p style="min-height:200px;"></p>');
+      {
+        // Build cover content with logo and title
+        const cover = document.createElement('div');
+        cover.className = 'flex flex-col items-center text-center space-y-4';
+        const logo = document.createElement('img');
+        logo.src = 'e7a7709a-edce-435b-af3c-d5c4bc059926.png';
+        logo.alt = 'Logo K‑Meter';
+        logo.style.maxWidth = '200px';
+        cover.appendChild(logo);
+        const title = document.createElement('h1');
+        title.className = 'text-3xl font-bold';
+        title.textContent = 'K‑METER – Relatório de Consumos Energéticos';
+        cover.appendChild(title);
+        const dateP = document.createElement('p');
+        dateP.textContent = `Data: ${dateStr}`;
+        cover.appendChild(dateP);
+        const authorP = document.createElement('p');
+        authorP.textContent = 'Autor: Koelho2000';
+        cover.appendChild(authorP);
+        section('Capa', cover);
+      }
+      // Página em branco (sem título) para garantir quebra de página após a capa na impressão
+      section('', '<p style="min-height:200px;"></p>');
       // Descrição da aplicação, metodologia e criador
       section('Descrição da Aplicação, Metodologia e Criador', `
         <p>Esta aplicação web permite importar cargas térmicas horárias, dados climáticos e configurar equipamentos de AVAC para simular consumos energéticos. As metodologias incluem cálculo de energia consumida com base em curvas de eficiência, optimização de custos e emissões, e análise de cenários combinando diferentes equipamentos para aquecimento, arrefecimento, humidificação e desumidificação.</p>
@@ -1332,8 +1366,8 @@
         }
         section('Conclusão', conclusionHtml);
       }
-      // Página em branco antes da contra capa
-      section('Página em branco', '<p style="min-height:200px;"></p>');
+      // Página em branco antes da contra capa para quebrar página na impressão (sem título)
+      section('', '<p style="min-height:200px; page-break-after: always;"></p>');
       // Contra Capa
       section('Contra Capa', '<p class="text-center mt-24">Fim do Relatório</p>');
     }
