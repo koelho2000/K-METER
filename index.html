@@ -117,6 +117,9 @@
       <button data-page="menu9" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
         9. Relatório
       </button>
+      <button data-page="menu10" class="nav-btn w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 hover:bg-gray-700 hover:text-white">
+        10. Exportação / Importação
+      </button>
       <div class="flex-grow"></div>
       <button id="back-to-cover" class="w-full text-left px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors">
         ← Voltar à Capa
@@ -193,6 +196,18 @@
           </div>
         </div>
       </section>
+  <!-- Menu 10: Exportação / Importação -->
+  <section id="menu10" class="menu-section hidden space-y-6">
+    <h1 class="text-3xl font-bold text-gray-800">10. Exportação / Importação de Dados</h1>
+    <div class="bg-white p-6 rounded-lg shadow-md space-y-4">
+      <p class="text-gray-700 text-sm">Pode exportar todos os dados atuais da aplicação para um ficheiro JSON (inclui cargas, clima, equipamentos, simulações, optimizações e cenários) e importar posteriormente para recuperar o estado e reimprimir relatórios.</p>
+      <button id="export-app-data" class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-blue-700">Exportar Dados</button>
+      <div class="flex items-center space-x-4">
+        <input id="import-app-file" type="file" accept=".json" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+        <button id="import-app-data" class="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-green-700">Importar Dados</button>
+      </div>
+    </div>
+  </section>
 
       <!-- Menu 2: Climate File Import -->
       <section id="menu2" class="menu-section hidden space-y-6">
@@ -364,6 +379,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Consumo Elétrico (kWh)</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Consumo Gás Natural (kWh)</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Consumo de Água (L)</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Custo Anual (€)</th>
                 </tr>
               </thead>
               <tbody id="simulation-results-body" class="bg-white divide-y divide-gray-200"></tbody>
@@ -487,6 +503,7 @@
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Humidificação</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Desumidificação</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Custo (€/ano)</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Redução (€)</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ton CO₂</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Investimento (€)</th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ROI (%)</th>
@@ -519,7 +536,7 @@
           <div class="flex justify-end">
             <button id="run-comparison" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">Comparar</button>
           </div>
-          <div id="comparison-results" class="hidden space-y-4">
+            <div id="comparison-results" class="hidden space-y-4">
             <h2 class="text-xl font-semibold">Resultados Comparativos</h2>
             <div class="overflow-auto border border-gray-200 rounded-lg">
               <table class="min-w-full divide-y divide-gray-200">
@@ -536,6 +553,11 @@
             </div>
             <canvas id="comparisonChart" class="max-h-64"></canvas>
             <div id="comparison-equipments" class="mt-4 text-sm text-gray-700"></div>
+              <!-- Botão para guardar o comparativo e lista de comparativos guardados -->
+              <div class="flex justify-end mt-2">
+                <button id="save-comparison" class="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Guardar Comparativo</button>
+              </div>
+              <div id="saved-comparisons-list" class="mt-2 text-sm text-gray-700"></div>
           </div>
         </div>
       </section>
@@ -769,6 +791,7 @@
       // Atualizar opções de comparativo ao entrar na Comparativo
       if (id === 'menu8') {
         updateComparativoOptions();
+        updateSavedComparisonsList();
       }
     }
 
@@ -2348,6 +2371,11 @@
         const elecStr = res.electric_kWh && res.electric_kWh > 0 ? res.electric_kWh.toFixed(0) : '-';
         const peakStr = res.peak_kW && res.peak_kW > 0 ? res.peak_kW.toFixed(2) : '-';
         const thermalStr = res.thermal_kWh && res.thermal_kWh > 0 ? res.thermal_kWh.toFixed(0) : '-';
+        // Calcular custo anual de operação para este equipamento usando tarifas da otimização
+        const costElecOpt = parseFloat(document.getElementById('opt-electric-cost').value) || 0;
+        const costGasOpt = parseFloat(document.getElementById('opt-gas-cost').value) || 0;
+        const costWaterOpt = parseFloat(document.getElementById('opt-water-cost').value) || 0;
+        const annualCost = (res.electric_kWh || 0) * costElecOpt + (res.gas_kWh || 0) * costGasOpt + ((res.water_liters || 0) / 1000) * costWaterOpt;
         tr.innerHTML = `
           <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${res.equipmentName}</td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${res.loadType}</td>
@@ -2357,6 +2385,7 @@
           <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${elecStr}</td>
           <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${gasStr}</td>
           <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${waterStr}</td>
+           <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${annualCost.toFixed(2)}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -2431,12 +2460,30 @@
       equipmentList.forEach(eq => {
         if (eq.type === 'none') return;
         const peak = computePeakPowerForEq(eq);
-        // valores padrão
+        // valores padrão para gama e instalação
         const defaultGama = 'media';
         const defaultInst = 'normal';
-        const baseCost = { baixa: 200, media: 350, alta: 500 };
+        // custo base por tipo de equipamento (€/kW)
+        const baseCostByType = {
+          'electric': 100,
+          'gas_boiler': 150,
+          'heat_pump': 300,
+          'chiller': 250,
+          'split': 350,
+          'vrf': 500,
+          'adiabatic': 400,
+          'electric_steam': 200,
+          'fridge_cycle': 250,
+          'rooftop': 400,
+          'gas_radiators': 200,
+          'none': 0
+        };
+        // factores de gama (baixa: menor custo por kW, alta: maior custo)
+        const gamaFactor = { baixa: 0.8, media: 1.0, alta: 1.2 };
+        // factores de instalação
         const instFactor = { simples: 1.0, normal: 1.2, complexa: 1.4 };
-        const invEstimado = peak * baseCost[defaultGama] * instFactor[defaultInst];
+        const baseCostKw = baseCostByType[eq.type] || 0;
+        const invEstimado = peak * baseCostKw * gamaFactor[defaultGama] * instFactor[defaultInst];
         optimizationData[eq.id] = { gama: defaultGama, instalacao: defaultInst, investment: invEstimado, peakPower: peak };
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-50';
@@ -2484,10 +2531,11 @@
         });
         selectG.addEventListener('change', () => {
           optimizationData[eq.id].gama = selectG.value;
-          // recalcular investimento
+          // recalcular investimento com base no tipo de equipamento
           const gamaVal = selectG.value;
           const instVal = optimizationData[eq.id].instalacao;
-          const inv = optimizationData[eq.id].peakPower * baseCost[gamaVal] * instFactor[instVal];
+          const baseCostKw2 = baseCostByType[eq.type] || 0;
+          const inv = optimizationData[eq.id].peakPower * baseCostKw2 * gamaFactor[gamaVal] * instFactor[instVal];
           optimizationData[eq.id].investment = inv;
           inputInv.value = inv.toFixed(0);
         });
@@ -2505,7 +2553,8 @@
           optimizationData[eq.id].instalacao = selectI.value;
           const gamaVal = optimizationData[eq.id].gama;
           const instVal = selectI.value;
-          const inv = optimizationData[eq.id].peakPower * baseCost[gamaVal] * instFactor[instVal];
+          const baseCostKw2 = baseCostByType[eq.type] || 0;
+          const inv = optimizationData[eq.id].peakPower * baseCostKw2 * gamaFactor[gamaVal] * instFactor[instVal];
           optimizationData[eq.id].investment = inv;
           inputInv.value = inv.toFixed(0);
         });
@@ -2743,6 +2792,11 @@ let scenarioEquipmentList = [];
 let baseScenarioMetrics = null;
 let baseScenarioEquipMap = null;
 
+// Array de comparativos guardados (pares de índices base/optimizado)
+let savedComparisons = [];
+// Última comparação seleccionada (para guardar)
+let currentComparison = null;
+
     /**
      * Calcula todos os cenários possíveis (combinações de um equipamento por tipo de carga)
      * e actualiza o gráfico e a lista de selecção de cenários. Requer que
@@ -2905,9 +2959,12 @@ let baseScenarioEquipMap = null;
             let roiStr = '-';
             let valStr = '-';
             let tirStr = '-';
+            // calcular redução de custo comparado com cenário base
+            let savingsStr = '-';
             if (typeof baseScenarioMetrics !== 'undefined' && baseScenarioMetrics && m) {
               const investDiff = m.inv - baseScenarioMetrics.inv;
               const savings = baseScenarioMetrics.cost - m.cost;
+              savingsStr = savings.toFixed(2);
               // ROI: (OPEX base - OPEX cenário) / investimento do cenário
               if (m.inv > 0) {
                 const roi = (savings / m.inv) * 100;
@@ -2933,6 +2990,7 @@ let baseScenarioEquipMap = null;
               }
             }
             rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${costStr}</td>`;
+            rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${savingsStr}</td>`;
             rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${co2Str}</td>`;
             rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${invStr}</td>`;
             rowHtml += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${roiStr}</td>`;
@@ -3212,6 +3270,10 @@ let baseScenarioEquipMap = null;
       tbody.appendChild(tirTr);
       // mostrar a secção de resultados
       resultsDiv.classList.remove('hidden');
+      // Definir a comparação corrente e habilitar o botão para guardar
+      currentComparison = { base: baseVal, opt: optVal };
+      const saveBtn = document.getElementById('save-comparison');
+      if (saveBtn) saveBtn.disabled = false;
       // Equipamentos associados a cada cenário
       const equipDiv = document.getElementById('comparison-equipments');
       if (equipDiv) {
@@ -3291,6 +3353,37 @@ let baseScenarioEquipMap = null;
         }
       });
     }
+
+    // Função para actualizar a lista de comparativos guardados no menu Comparativo
+    function updateSavedComparisonsList() {
+      const cont = document.getElementById('saved-comparisons-list');
+      if (!cont) return;
+      cont.innerHTML = '';
+      if (!savedComparisons || savedComparisons.length === 0) {
+        cont.textContent = 'Nenhum comparativo guardado.';
+        return;
+      }
+      const ul = document.createElement('ul');
+      ul.className = 'list-disc list-inside space-y-1';
+      savedComparisons.forEach(cmp => {
+        let baseLabel;
+        let optLabel;
+        if (cmp.base === 'base') baseLabel = 'Base';
+        else {
+          const bi = parseInt(cmp.base, 10);
+          baseLabel = (scenarioLabels && scenarioLabels[bi]) ? scenarioLabels[bi] : cmp.base;
+        }
+        if (cmp.opt === 'base') optLabel = 'Base';
+        else {
+          const oi = parseInt(cmp.opt, 10);
+          optLabel = (scenarioLabels && scenarioLabels[oi]) ? scenarioLabels[oi] : cmp.opt;
+        }
+        const li = document.createElement('li');
+        li.textContent = `${baseLabel} vs ${optLabel}`;
+        ul.appendChild(li);
+      });
+      cont.appendChild(ul);
+    }
   </script>
   <!-- Override cover logo to use uploaded image once the DOM has loaded -->
   <script>
@@ -3317,6 +3410,96 @@ let baseScenarioEquipMap = null;
       if (generalNotesInput) {
         generalNotesInput.addEventListener('input', e => {
           clientInfo.notes = e.target.value;
+        });
+      }
+
+      // Event listener para exportação de dados da aplicação
+      const exportAppBtn = document.getElementById('export-app-data');
+      if (exportAppBtn) {
+        exportAppBtn.addEventListener('click', () => {
+          const exportObj = {
+            thermalLoads: thermalLoads,
+            climateData: climateData,
+            generatedClimateData: generatedClimateData,
+            equipmentList: equipmentList,
+            optimizationData: optimizationData,
+            lastSimulationResults: lastSimulationResults,
+            scenarioMetrics: scenarioMetrics,
+            scenarioLabels: scenarioLabels,
+            scenarioEquipmentList: scenarioEquipmentList,
+            baseScenarioMetrics: baseScenarioMetrics,
+            baseScenarioEquipMap: baseScenarioEquipMap,
+            savedComparisons: savedComparisons,
+            clientInfo: clientInfo
+          };
+          const jsonStr = JSON.stringify(exportObj);
+          const blob = new Blob([jsonStr], { type: 'application/json' });
+          const link = document.createElement('a');
+          const url = URL.createObjectURL(blob);
+          link.setAttribute('href', url);
+          link.setAttribute('download', 'k_meter_export.json');
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
+      }
+
+      // Event listener para importação de dados da aplicação
+      const importFileInput = document.getElementById('import-app-file');
+      const importAppBtn = document.getElementById('import-app-data');
+      if (importAppBtn && importFileInput) {
+        importAppBtn.addEventListener('click', () => {
+          const file = importFileInput.files[0];
+          if (!file) {
+            alert('Selecione um ficheiro JSON para importar.');
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            try {
+              const data = JSON.parse(e.target.result);
+              if (data.thermalLoads) thermalLoads = data.thermalLoads;
+              if (data.climateData) climateData = data.climateData;
+              if (data.generatedClimateData) generatedClimateData = data.generatedClimateData;
+              if (data.equipmentList) equipmentList = data.equipmentList;
+              if (data.optimizationData) optimizationData = data.optimizationData;
+              if (data.lastSimulationResults) lastSimulationResults = data.lastSimulationResults;
+              if (data.scenarioMetrics) scenarioMetrics = data.scenarioMetrics;
+              if (data.scenarioLabels) scenarioLabels = data.scenarioLabels;
+              if (data.scenarioEquipmentList) scenarioEquipmentList = data.scenarioEquipmentList;
+              if (data.baseScenarioMetrics) baseScenarioMetrics = data.baseScenarioMetrics;
+              if (data.baseScenarioEquipMap) baseScenarioEquipMap = data.baseScenarioEquipMap;
+              if (data.savedComparisons) savedComparisons = data.savedComparisons;
+              if (data.clientInfo) clientInfo = data.clientInfo;
+              // Actualizar interfaces
+              renderEquipmentList();
+              updateInvestmentTable();
+              updateScenarioAnalysis();
+              updateComparativoOptions();
+              updateSavedComparisonsList();
+              // Actualizar campos do formulário de cliente
+              if (clientNameInput) clientNameInput.value = clientInfo.name || '';
+              if (installationNameInput) installationNameInput.value = clientInfo.installation || '';
+              if (generalNotesInput) generalNotesInput.value = clientInfo.notes || '';
+              alert('Dados importados com sucesso.');
+            } catch(err) {
+              alert('Erro ao importar dados: ' + err.message);
+            }
+          };
+          reader.readAsText(file);
+        });
+      }
+
+      // Listener para guardar comparativo
+      const saveComparisonBtn = document.getElementById('save-comparison');
+      if (saveComparisonBtn) {
+        saveComparisonBtn.addEventListener('click', () => {
+          if (currentComparison) {
+            savedComparisons.push({ base: currentComparison.base, opt: currentComparison.opt });
+            updateSavedComparisonsList();
+            saveComparisonBtn.disabled = true;
+          }
         });
       }
     });
